@@ -1,24 +1,25 @@
-import { Application, Container, Graphics, Filter } from 'pixi.js';
-import { vertexShader, fragmentShader } from './manaShader.js';
+import { vertexShaderSource, fragmentShaderSource } from './manaShader.js';
 
 /**
- * TCG Mana Overlay - Main Application
+ * TCG Mana Overlay - WebGL Render Engine & Touch Gesture System
  * Optimized for Apple iPad Safari standalone & Desktop WebGL
  */
 class ManaOverlayApp {
   constructor() {
-    this.app = null;
-    this.filter = null;
-    this.targetContainer = null;
-    
-    // Default Frame Transform State
+    this.canvas = null;
+    this.gl = null;
+    this.program = null;
+    this.uniformLocations = {};
+    this.positionBuffer = null;
+
+    // Frame State
     this.state = {
       centerX: window.innerWidth / 2,
       centerY: window.innerHeight / 2,
       width: 320,
       height: 426, // 3" x 4" toploader aspect ratio (~0.75)
       scale: 1.0,
-      rotation: 0, // radians
+      rotation: 0, // radians (0, PI/2, PI, 3*PI/2)
       cornerRadius: 24,
       borderThickness: 32,
       glowIntensity: 1.4,
@@ -29,7 +30,7 @@ class ManaOverlayApp {
       preset: 'toploader'
     };
 
-    // Card Presets (Aspect ratios & base dimensions)
+    // Card Presets
     this.presets = {
       toploader: { width: 320, height: 426, name: 'Toploader (3"×4")' },
       standard:  { width: 300, height: 418, name: 'Standard (MTG/Pokémon)' },
@@ -37,17 +38,15 @@ class ManaOverlayApp {
       oversized: { width: 370, height: 520, name: 'Oversized (Commander)' }
     };
 
-    // Touch & Gesture Tracking
+    // Touch Tracking
     this.touchState = {
       isDragging: false,
-      activeTouches: new Map(),
       startCenter: { x: 0, y: 0 },
       startState: { ...this.state },
-      startDist: 0,
-      startAngle: 0
+      startDist: 0
     };
 
-    // FPS Counter variables
+    // FPS Meter
     this.fpsCounter = {
       frames: 0,
       lastTime: performance.now(),
@@ -56,152 +55,186 @@ class ManaOverlayApp {
   }
 
   async init() {
-    // 1. Initialize PixiJS v8 Application
+    // 1. Setup Canvas & WebGL Context
     const container = document.getElementById('canvas-container');
-    
-    // Explicitly set resolution (devicePixelRatio capped at 1.5 max for 60 FPS on Retina displays)
-    const maxDpr = Math.min(window.devicePixelRatio || 1, 1.5);
-    
-    this.app = new Application();
-    await this.app.init({
-      resizeTo: window,
-      resolution: maxDpr,
-      autoDensity: true,
-      antialias: true,
-      backgroundColor: 0x030305,
-      powerPreference: 'high-performance'
-    });
+    this.canvas = document.createElement('canvas');
+    container.appendChild(this.canvas);
 
-    container.appendChild(this.app.canvas);
+    this.gl = this.canvas.getContext('webgl', { antialias: true, alpha: true, powerPreference: 'high-performance' }) ||
+              this.canvas.getContext('experimental-webgl');
 
-    // 2. Build Custom Shader & Fullscreen Render Filter
-    this.createShaderFilter();
+    if (!this.gl) {
+      console.error('WebGL is not supported on this browser/device.');
+      return;
+    }
 
-    // 3. Setup Resize & Device Orientation Listeners
+    // 2. Compile WebGL Program & Shaders
+    this.initWebGL();
+
+    // 3. Setup Resize Handler
     window.addEventListener('resize', () => this.handleResize());
     this.handleResize();
 
-    // 4. Register Gesture Engine (Touch / Pointer Events)
+    // 4. Setup Gesture Engine (No 2-finger rotation; zoom & move only!)
     this.setupGestureEngine();
 
-    // 5. Wire UI Overlay Controls
+    // 5. Wire HUD Controls
     this.setupUIBindings();
 
-    // 6. Start Main Animation Loop
-    this.app.ticker.add((ticker) => this.renderLoop(ticker));
+    // 6. Start Render Animation Loop
+    requestAnimationFrame((t) => this.renderLoop(t));
 
-    // Update initial UI state
+    // Initial visual update
     this.updateVisualGuide();
-    console.log('⚡ TCG Mana Overlay Engine Initialized Successfully!');
+    console.log('⚡ TCG Mana Overlay Engine Loaded Successfully!');
   }
 
-  createShaderFilter() {
-    const width = this.app.screen.width;
-    const height = this.app.screen.height;
+  initWebGL() {
+    const gl = this.gl;
 
-    // Uniforms resource setup for PixiJS v8 Filter
-    this.uniforms = {
-      uTime: 0,
-      uResolution: [width, height],
-      uFrameSize: [this.state.width * this.state.scale, this.state.height * this.state.scale],
-      uCenter: [this.state.centerX, this.state.centerY],
-      uRotation: this.state.rotation,
-      uCornerRadius: this.state.cornerRadius,
-      uBorderThickness: this.state.borderThickness,
-      uGlowIntensity: this.state.glowIntensity,
-      uTurbulence: this.state.turbulence,
-      uTheme: this.state.theme
+    // Compile Vertex Shader
+    const vertShader = gl.createShader(gl.VERTEX_SHADER);
+    gl.shaderSource(vertShader, vertexShaderSource);
+    gl.compileShader(vertShader);
+
+    if (!gl.getShaderParameter(vertShader, gl.COMPILE_STATUS)) {
+      console.error('Vertex Shader Compile Error:', gl.getShaderInfoLog(vertShader));
+      return;
+    }
+
+    // Compile Fragment Shader
+    const fragShader = gl.createShader(gl.FRAGMENT_SHADER);
+    gl.shaderSource(fragShader, fragmentShaderSource);
+    gl.compileShader(fragShader);
+
+    if (!gl.getShaderParameter(fragShader, gl.COMPILE_STATUS)) {
+      console.error('Fragment Shader Compile Error:', gl.getShaderInfoLog(fragShader));
+      return;
+    }
+
+    // Create & Link Program
+    this.program = gl.createProgram();
+    gl.attachShader(this.program, vertShader);
+    gl.attachShader(this.program, fragShader);
+    gl.linkProgram(this.program);
+
+    if (!gl.getProgramParameter(this.program, gl.LINK_STATUS)) {
+      console.error('Shader Link Error:', gl.getProgramInfoLog(this.program));
+      return;
+    }
+
+    gl.useProgram(this.program);
+
+    // Fullscreen Quad Geometry
+    this.positionBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
+    const positions = new Float32Array([
+      -1, -1,
+       1, -1,
+      -1,  1,
+      -1,  1,
+       1, -1,
+       1,  1
+    ]);
+    gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+
+    const aPosition = gl.getAttribLocation(this.program, 'aPosition');
+    gl.enableVertexAttribArray(aPosition);
+    gl.vertexAttribPointer(aPosition, 2, gl.FLOAT, false, 0, 0);
+
+    // Cache Uniform Locations
+    this.uniformLocations = {
+      uTime: gl.getUniformLocation(this.program, 'uTime'),
+      uResolution: gl.getUniformLocation(this.program, 'uResolution'),
+      uCenter: gl.getUniformLocation(this.program, 'uCenter'),
+      uFrameSize: gl.getUniformLocation(this.program, 'uFrameSize'),
+      uRotation: gl.getUniformLocation(this.program, 'uRotation'),
+      uCornerRadius: gl.getUniformLocation(this.program, 'uCornerRadius'),
+      uBorderThickness: gl.getUniformLocation(this.program, 'uBorderThickness'),
+      uGlowIntensity: gl.getUniformLocation(this.program, 'uGlowIntensity'),
+      uTurbulence: gl.getUniformLocation(this.program, 'uTurbulence'),
+      uTheme: gl.getUniformLocation(this.program, 'uTheme')
     };
 
-    // Create Filter using custom GLSL shaders
-    this.filter = Filter.from({
-      gl: {
-        vertex: vertexShader,
-        fragment: fragmentShader
-      },
-      resources: {
-        manaUniforms: {
-          uTime: { value: 0, type: 'f32' },
-          uResolution: { value: [width, height], type: 'vec2<f32>' },
-          uFrameSize: { value: [this.state.width, this.state.height], type: 'vec2<f32>' },
-          uCenter: { value: [this.state.centerX, this.state.centerY], type: 'vec2<f32>' },
-          uRotation: { value: 0, type: 'f32' },
-          uCornerRadius: { value: 24, type: 'f32' },
-          uBorderThickness: { value: 32, type: 'f32' },
-          uGlowIntensity: { value: 1.4, type: 'f32' },
-          uTurbulence: { value: 1.0, type: 'f32' },
-          uTheme: { value: 0, type: 'i32' }
-        }
-      }
-    });
-
-    // Create full screen background sprite to apply filter onto
-    this.targetContainer = new Graphics();
-    this.targetContainer.rect(0, 0, width, height);
-    this.targetContainer.fill({ color: 0x030305 });
-    this.targetContainer.filters = [this.filter];
-
-    this.app.stage.addChild(this.targetContainer);
+    // Enable Blending for Smooth Alpha Transparency
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
   }
 
-  renderLoop(ticker) {
-    // 1. Update Time Uniform
-    const timeSec = performance.now() * 0.001;
-    
-    // PixiJS v8 filter uniform updates
-    const filterUniforms = this.filter.resources.manaUniforms.uniforms;
-    filterUniforms.uTime = timeSec;
-    filterUniforms.uResolution = [this.app.screen.width, this.app.screen.height];
-    filterUniforms.uFrameSize = [
-      this.state.width * this.state.scale,
-      this.state.height * this.state.scale
-    ];
-    filterUniforms.uCenter = [this.state.centerX, this.state.centerY];
-    filterUniforms.uRotation = this.state.rotation;
-    filterUniforms.uCornerRadius = this.state.cornerRadius * this.state.scale;
-    filterUniforms.uBorderThickness = this.state.borderThickness;
-    filterUniforms.uGlowIntensity = this.state.glowIntensity;
-    filterUniforms.uTurbulence = this.state.turbulence;
-    filterUniforms.uTheme = this.state.theme;
+  handleResize() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    const width = window.innerWidth;
+    const height = window.innerHeight;
 
-    // 2. Measure & Update FPS Counter
+    this.canvas.width = Math.round(width * dpr);
+    this.canvas.height = Math.round(height * dpr);
+    this.canvas.style.width = `${width}px`;
+    this.canvas.style.height = `${height}px`;
+
+    if (this.gl) {
+      this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+    }
+    this.updateVisualGuide();
+  }
+
+  renderLoop(timeMs) {
+    const gl = this.gl;
+    if (!gl || !this.program) return;
+
+    const timeSec = timeMs * 0.001;
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    const screenWidth = window.innerWidth * dpr;
+    const screenHeight = window.innerHeight * dpr;
+
+    gl.clearColor(0.01, 0.01, 0.02, 1.0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+
+    gl.useProgram(this.program);
+
+    // Pass Physical Pixel Uniforms to WebGL Shader
+    gl.uniform1f(this.uniformLocations.uTime, timeSec);
+    gl.uniform2f(this.uniformLocations.uResolution, screenWidth, screenHeight);
+    gl.uniform2f(this.uniformLocations.uCenter, this.state.centerX * dpr, this.state.centerY * dpr);
+    gl.uniform2f(
+      this.uniformLocations.uFrameSize,
+      this.state.width * this.state.scale * dpr,
+      this.state.height * this.state.scale * dpr
+    );
+    gl.uniform1f(this.uniformLocations.uRotation, this.state.rotation);
+    gl.uniform1f(this.uniformLocations.uCornerRadius, this.state.cornerRadius * this.state.scale * dpr);
+    gl.uniform1f(this.uniformLocations.uBorderThickness, this.state.borderThickness * dpr);
+    gl.uniform1f(this.uniformLocations.uGlowIntensity, this.state.glowIntensity);
+    gl.uniform1f(this.uniformLocations.uTurbulence, this.state.turbulence);
+    gl.uniform1i(this.uniformLocations.uTheme, this.state.theme);
+
+    // Draw Fullscreen Quad
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+    // FPS Meter Update
     this.fpsCounter.frames++;
     const now = performance.now();
     if (now - this.fpsCounter.lastTime >= 500) {
       this.fpsCounter.fps = Math.round((this.fpsCounter.frames * 1000) / (now - this.fpsCounter.lastTime));
       this.fpsCounter.frames = 0;
       this.fpsCounter.lastTime = now;
-      
+
       const fpsEl = document.getElementById('fps-meter');
       if (fpsEl) {
         fpsEl.textContent = `${this.fpsCounter.fps} FPS`;
         fpsEl.style.color = this.fpsCounter.fps >= 55 ? '#00e5ff' : this.fpsCounter.fps >= 30 ? '#ffb700' : '#ff4444';
       }
     }
-  }
 
-  handleResize() {
-    const width = window.innerWidth;
-    const height = window.innerHeight;
-
-    if (this.app && this.app.renderer) {
-      this.app.renderer.resize(width, height);
-    }
-
-    if (this.targetContainer) {
-      this.targetContainer.clear();
-      this.targetContainer.rect(0, 0, width, height);
-      this.targetContainer.fill({ color: 0x030305 });
-    }
+    requestAnimationFrame((t) => this.renderLoop(t));
   }
 
   /**
-   * Touch & Gesture Engine (1-finger drag, 2-finger pinch & rotate)
+   * Touch Gesture Engine
+   * Rule: 1-finger move, 2-finger zoom ONLY (NO 2-finger rotation).
    */
   setupGestureEngine() {
-    const canvas = this.app.canvas;
+    const canvas = this.canvas;
 
-    // Prevent Safari default touch actions
     canvas.addEventListener('touchstart', (e) => this.onTouchStart(e), { passive: false });
     canvas.addEventListener('touchmove', (e) => this.onTouchMove(e), { passive: false });
     canvas.addEventListener('touchend', (e) => this.onTouchEnd(e), { passive: false });
@@ -210,10 +243,10 @@ class ManaOverlayApp {
     // Desktop Mouse Fallbacks
     canvas.addEventListener('mousedown', (e) => this.onMouseDown(e));
     window.addEventListener('mousemove', (e) => this.onMouseMove(e));
-    window.addEventListener('mouseup', (e) => this.onMouseUp(e));
+    window.addEventListener('mouseup', () => this.onMouseUp());
     canvas.addEventListener('wheel', (e) => this.onWheel(e), { passive: false });
 
-    // Document level safety: disable default browser zoom & rubber-banding
+    // Intercept default browser pinch/zoom gestures
     document.addEventListener('gesturestart', (e) => e.preventDefault(), { passive: false });
     document.addEventListener('gesturechange', (e) => e.preventDefault(), { passive: false });
     document.addEventListener('gestureend', (e) => e.preventDefault(), { passive: false });
@@ -225,19 +258,17 @@ class ManaOverlayApp {
 
     const touches = e.touches;
     if (touches.length === 1) {
-      // 1-Finger Drag Start
+      // 1-Finger Move Start
       this.touchState.isDragging = true;
       this.touchState.startCenter = { x: touches[0].clientX, y: touches[0].clientY };
       this.touchState.startState = { ...this.state };
     } else if (touches.length === 2) {
-      // 2-Finger Pinch & Rotate Start
+      // 2-Finger Zoom/Scale & Move Start (Rotation Disabled!)
       this.touchState.isDragging = true;
       const t1 = touches[0];
       const t2 = touches[1];
       
       this.touchState.startDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
-      this.touchState.startAngle = Math.atan2(t2.clientY - t1.clientY, t2.clientX - t1.clientX);
-      
       const midX = (t1.clientX + t2.clientX) / 2;
       const midY = (t1.clientY + t2.clientY) / 2;
       this.touchState.startCenter = { x: midX, y: midY };
@@ -251,37 +282,31 @@ class ManaOverlayApp {
 
     const touches = e.touches;
     if (touches.length === 1) {
-      // 1-Finger Drag Move
+      // 1-Finger Move
       const dx = touches[0].clientX - this.touchState.startCenter.x;
       const dy = touches[0].clientY - this.touchState.startCenter.y;
-      
+
       this.state.centerX = this.touchState.startState.centerX + dx;
       this.state.centerY = this.touchState.startState.centerY + dy;
 
     } else if (touches.length === 2) {
-      // 2-Finger Pinch Scale & Twist Rotate
+      // 2-Finger Pinch Zoom ONLY (Rotation is NOT calculated here!)
       const t1 = touches[0];
       const t2 = touches[1];
-      
+
       const currentDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
-      const currentAngle = Math.atan2(t2.clientY - t1.clientY, t2.clientX - t1.clientX);
-      
-      // Calculate Scale Delta
+
       if (this.touchState.startDist > 0) {
         const scaleFactor = currentDist / this.touchState.startDist;
         this.state.scale = Math.min(Math.max(this.touchState.startState.scale * scaleFactor, 0.4), 3.0);
       }
 
-      // Calculate Rotation Delta
-      const angleDelta = currentAngle - this.touchState.startAngle;
-      this.state.rotation = this.touchState.startState.rotation + angleDelta;
-
-      // Translation offset from midpoint movement
+      // Midpoint Translation
       const midX = (t1.clientX + t2.clientX) / 2;
       const midY = (t1.clientY + t2.clientY) / 2;
       const dx = midX - this.touchState.startCenter.x;
       const dy = midY - this.touchState.startCenter.y;
-      
+
       this.state.centerX = this.touchState.startState.centerX + dx;
       this.state.centerY = this.touchState.startState.centerY + dy;
     }
@@ -293,13 +318,11 @@ class ManaOverlayApp {
     if (e.touches.length === 0) {
       this.touchState.isDragging = false;
     } else if (e.touches.length === 1) {
-      // Transition from 2-finger to 1-finger
       this.touchState.startCenter = { x: e.touches[0].clientX, y: e.touches[0].clientY };
       this.touchState.startState = { ...this.state };
     }
   }
 
-  // Mouse Handlers for Desktop Testing
   onMouseDown(e) {
     if (this.state.isLocked) return;
     this.touchState.isDragging = true;
@@ -324,26 +347,20 @@ class ManaOverlayApp {
     e.preventDefault();
     if (this.state.isLocked) return;
 
-    if (e.shiftKey) {
-      // Shift + Scroll = Rotate
-      const rotDelta = (e.deltaY > 0 ? 1 : -1) * (Math.PI / 36); // 5 degrees
-      this.state.rotation += rotDelta;
-    } else {
-      // Scroll = Scale
-      const zoomFactor = e.deltaY > 0 ? 0.95 : 1.05;
-      this.state.scale = Math.min(Math.max(this.state.scale * zoomFactor, 0.4), 3.0);
-    }
+    // Scroll wheel adjusts scale
+    const zoomFactor = e.deltaY > 0 ? 0.95 : 1.05;
+    this.state.scale = Math.min(Math.max(this.state.scale * zoomFactor, 0.4), 3.0);
     this.updateVisualGuide();
   }
 
   /**
-   * HUD UI Control Panel Bindings
+   * HUD Control Bindings
    */
   setupUIBindings() {
-    // 1. Lock Toggle Button
+    // 1. Lock Button
     const lockBtn = document.getElementById('btn-lock');
     const floatingUnlockBtn = document.getElementById('floating-unlock');
-    
+
     const toggleLock = () => {
       this.state.isLocked = !this.state.isLocked;
       this.updateLockUI();
@@ -352,24 +369,24 @@ class ManaOverlayApp {
     lockBtn.addEventListener('click', toggleLock);
     floatingUnlockBtn.addEventListener('click', toggleLock);
 
-    // 2. Collapsible HUD Toggle Button
+    // 2. Collapsible HUD
     const toggleHudBtn = document.getElementById('btn-toggle-hud');
     const uiOverlay = document.getElementById('ui-overlay');
-    
+
     toggleHudBtn.addEventListener('click', () => {
       this.state.isHudCollapsed = !this.state.isHudCollapsed;
       uiOverlay.classList.toggle('collapsed', this.state.isHudCollapsed);
       toggleHudBtn.style.transform = this.state.isHudCollapsed ? 'rotate(180deg)' : 'rotate(0deg)';
     });
 
-    // 3. Card Presets
+    // 3. Card Ratio Presets
     document.querySelectorAll('.btn-preset').forEach((btn) => {
       btn.addEventListener('click', (e) => {
         const presetKey = e.currentTarget.getAttribute('data-preset');
         if (this.presets[presetKey]) {
           document.querySelectorAll('.btn-preset').forEach((b) => b.classList.remove('active'));
-          btn.classList.add('active');
-          
+          e.currentTarget.classList.add('active');
+
           this.state.preset = presetKey;
           this.state.width = this.presets[presetKey].width;
           this.state.height = this.presets[presetKey].height;
@@ -378,17 +395,17 @@ class ManaOverlayApp {
       });
     });
 
-    // 4. Color Theme Selector
+    // 4. Color Theme Selector (Blue, Red, Green, Purple, Gold)
     document.querySelectorAll('.btn-theme').forEach((btn) => {
       btn.addEventListener('click', (e) => {
-        const theme = e.currentTarget.getAttribute('data-theme');
+        const themeStr = e.currentTarget.getAttribute('data-theme');
         document.querySelectorAll('.btn-theme').forEach((b) => b.classList.remove('active'));
-        btn.classList.add('active');
+        e.currentTarget.classList.add('active');
 
         const themeMap = { blue: 0, red: 1, green: 2, purple: 3, gold: 4 };
-        this.state.theme = themeMap[theme] ?? 0;
-        
-        // Update glow accent colors in CSS
+        this.state.theme = themeMap[themeStr] ?? 0;
+
+        // Update brand orb glow
         const orb = document.getElementById('brand-orb');
         if (orb) {
           const colors = ['#00e5ff', '#ff4400', '#00ff88', '#b000ff', '#ffcc00'];
@@ -397,7 +414,7 @@ class ManaOverlayApp {
       });
     });
 
-    // 5. Range Sliders
+    // 5. Range Sliders (Instant State Updates)
     this.bindSlider('slider-glow', 'val-glow', (val) => {
       this.state.glowIntensity = parseFloat(val);
       return `${val}x`;
@@ -425,6 +442,7 @@ class ManaOverlayApp {
       this.updateVisualGuide();
     });
 
+    // Rotate 90° Button (Exact 90° rotation increments)
     document.getElementById('btn-rotate-90').addEventListener('click', () => {
       this.state.rotation += Math.PI / 2;
       this.updateVisualGuide();
@@ -440,8 +458,7 @@ class ManaOverlayApp {
       this.state.glowIntensity = 1.4;
       this.state.turbulence = 1.0;
       this.state.theme = 0;
-      
-      // Reset sliders & buttons
+
       document.getElementById('slider-glow').value = 1.4;
       document.getElementById('val-glow').textContent = '1.4x';
       document.getElementById('slider-thickness').value = 32;
@@ -450,7 +467,7 @@ class ManaOverlayApp {
       document.getElementById('val-speed').textContent = '1.0x';
       document.getElementById('slider-radius').value = 24;
       document.getElementById('val-radius').textContent = '24px';
-      
+
       document.querySelectorAll('.btn-preset')[0].click();
       document.querySelectorAll('.btn-theme')[0].click();
 
@@ -489,6 +506,8 @@ class ManaOverlayApp {
       lockLabel.textContent = 'LOCKED';
       badge.textContent = 'LOCKED';
       badge.classList.add('locked');
+      
+      // HIDE the dashed alignment box when locked! (Glowing WebGL frame stays visible)
       if (guide) guide.classList.remove('visible');
     } else {
       uiOverlay.classList.remove('locked-mode');
@@ -527,10 +546,10 @@ class ManaOverlayApp {
   }
 }
 
-// Instantiate and start app on DOMReady
+// Start Application on DOMReady
 window.addEventListener('DOMContentLoaded', () => {
   const app = new ManaOverlayApp();
   app.init().catch((err) => {
-    console.error('Failed to initialize TCG Mana Overlay App:', err);
+    console.error('Failed to initialize TCG Mana Overlay:', err);
   });
 });

@@ -1,67 +1,55 @@
 /**
- * High-Performance GLSL Fragment & Vertex Shaders for PixiJS v8
- * World of Warcraft style Blue Mana / Elemental Aura around TCG Cards
+ * High-Performance GLSL Shaders for TCG Mana Overlay
+ * Supports WebGL 2 & WebGL 1 across mobile iPad Safari & Desktop
  */
 
-export const vertexShader = `
-precision highp float;
-
+export const vertexShaderSource = `
 attribute vec2 aPosition;
-attribute vec2 aTextureCoord;
-
-uniform mat3 uProjectionMatrix;
-uniform mat3 uWorldTransformMatrix;
-uniform mat3 uTransformMatrix;
-
-varying vec2 vTextureCoord;
 
 void main(void) {
-  vTextureCoord = aTextureCoord;
-  gl_Position = vec4((uProjectionMatrix * uWorldTransformMatrix * vec3(aPosition, 1.0)).xy, 0.0, 1.0);
+  gl_Position = vec4(aPosition, 0.0, 1.0);
 }
 `;
 
-export const fragmentShader = `
+export const fragmentShaderSource = `
 precision highp float;
 
-varying vec2 vTextureCoord;
-
 uniform float uTime;
-uniform vec2 uResolution;
-uniform vec2 uFrameSize;       // width, height of card frame
-uniform vec2 uCenter;          // center position on screen
-uniform float uRotation;       // rotation angle in radians
-uniform float uCornerRadius;   // corner radius in pixels
-uniform float uBorderThickness;// border thickness in pixels
-uniform float uGlowIntensity;  // glow multiplier
-uniform float uTurbulence;     // fluid speed / noise scale
-uniform int uTheme;            // 0: Blue, 1: Red, 2: Green, 3: Purple, 4: Gold
+uniform vec2 uResolution;       // Screen size in pixels (width, height)
+uniform vec2 uCenter;           // Card frame center position in pixels
+uniform vec2 uFrameSize;        // Card frame width & height in pixels
+uniform float uRotation;        // Rotation angle in radians
+uniform float uCornerRadius;    // Corner radius in pixels
+uniform float uBorderThickness; // Border thickness in pixels
+uniform float uGlowIntensity;   // Glow brightness multiplier (0.4 - 3.0)
+uniform float uTurbulence;      // Fluid turbulence animation speed
+uniform int uTheme;             // 0: Blue, 1: Red, 2: Green, 3: Purple, 4: Gold
 
 // 2D Simplex / Perlin noise for fluid Mana turbulence
 vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
 vec2 mod289(vec2 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-vec3 permute(vec3 x) { return mod289(((x*34.0)+1.0)*x); }
+vec3 permute(vec3 x) { return mod289(((x * 34.0) + 1.0) * x); }
 
 float snoise(vec2 v) {
   const vec4 C = vec4(0.211324865405187, 0.366025403784439,
                      -0.577350269189626, 0.024390243902439);
-  vec2 i  = floor(v + dot(v, C.yy) );
-  vec2 x0 = v -   i + dot(i, C.xx);
+  vec2 i  = floor(v + dot(v, C.yy));
+  vec2 x0 = v - i + dot(i, C.xx);
   vec2 i1;
   i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
   vec4 x12 = x0.xyxy + C.xxzz;
   x12.xy -= i1;
   i = mod289(i);
-  vec3 p = permute( permute( i.y + vec3(0.0, i1.y, 1.0 ))
-  + i.x + vec3(0.0, i1.x, 1.0 ));
-  vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);
-  m = m*m;
-  m = m*m;
+  vec3 p = permute(permute(i.y + vec3(0.0, i1.y, 1.0))
+  + i.x + vec3(0.0, i1.x, 1.0));
+  vec3 m = max(0.5 - vec3(dot(x0, x0), dot(x12.xy, x12.xy), dot(x12.zw, x12.zw)), 0.0);
+  m = m * m;
+  m = m * m;
   vec3 x = 2.0 * fract(p * C.www) - 1.0;
   vec3 h = abs(x) - 0.5;
   vec3 ox = floor(x + 0.5);
   vec3 a0 = x - ox;
-  m *= 1.79284291400159 - 0.85373472095314 * ( a0*a0 + h*h );
+  m *= 1.79284291400159 - 0.85373472095314 * (a0 * a0 + h * h);
   vec3 g;
   g.x  = a0.x  * x0.x  + h.x  * x0.y;
   g.yz = a0.yw * x12.xz + h.yw * x12.yw;
@@ -87,11 +75,11 @@ float sdRoundedBox(vec2 p, vec2 b, float r) {
 }
 
 void main(void) {
-  // Screen space pixel coordinate
-  vec2 fragCoord = vTextureCoord * uResolution;
+  // Convert WebGL bottom-left fragCoord to screen top-left coordinates
+  vec2 screenPos = vec2(gl_FragCoord.x, uResolution.y - gl_FragCoord.y);
   
   // Position relative to card frame center
-  vec2 pos = fragCoord - uCenter;
+  vec2 pos = screenPos - uCenter;
   
   // Rotate around center
   float cosA = cos(-uRotation);
@@ -112,15 +100,17 @@ void main(void) {
   float innerRadius = max(1.0, r - innerThickness * 0.5);
   float distInner = sdRoundedBox(pos, innerHalfSize, innerRadius);
   
-  // Bloom falloffs
-  float outerGlow = exp(-0.045 * max(0.0, distOuter));
-  float innerGlow = exp(-0.065 * max(0.0, -distInner));
+  // Outer Bloom Glow: exponential falloff outside the frame
+  float outerGlow = exp(-0.04 * max(0.0, distOuter));
+  
+  // Inner Bloom Glow: exponential falloff fading inside the hollow area
+  float innerGlow = exp(-0.06 * max(0.0, -distInner));
   
   // Solid border mask
   float borderMask = smoothstep(4.0, -2.0, distOuter) * smoothstep(-innerThickness - 4.0, -innerThickness + 2.0, distInner);
   
   // Total light intensity
-  float totalGlow = outerGlow * 0.75 + innerGlow * 0.25 + borderMask * 1.6;
+  float totalGlow = outerGlow * 0.8 + innerGlow * 0.3 + borderMask * 1.8;
   
   // Domain Warping Fluid Turbulence
   vec2 st = pos * 0.012;
