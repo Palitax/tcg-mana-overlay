@@ -1,6 +1,6 @@
 /**
- * High-End TCG Toploader Liquid Mana Overlay
- * Particle-Heavy Cosmic Space Dust & Nebula Engine
+ * High-End TCG Toploader Overlay - Viscous Liquid Mana Engine
+ * Simulates thick, glowing, viscous liquid mana (no glitter stars)
  */
 
 class ManaOverlayApp {
@@ -17,9 +17,9 @@ class ManaOverlayApp {
       scale: 1.0,
       rotation: 0,
       cornerRadius: 18,
-      borderThickness: 36,
+      borderThickness: 38,
       glowIntensity: 2.2,
-      turbulence: 1.2,
+      turbulence: 1.0,
       theme: 0, // 0: Blue Mana, 1: Red Fire, 2: Emerald Green, 3: Nether Void, 4: Holy Sun
       isLocked: false,
       isHudCollapsed: false,
@@ -34,52 +34,52 @@ class ManaOverlayApp {
       oversized: { width: 370, height: 520, name: 'Oversized (Commander)' }
     };
 
-    // Theme Color Palettes with Cosmic Nebula Tones
+    // Viscous Liquid Theme Color Palettes
     this.themes = [
-      { // 0: Blue Mana (Space Cyan & Arcane Nebula)
-        primary: '#00f2ff',
-        secondary: '#0066ff',
-        dark: '#001030',
+      { // 0: Viscous Blue Mana Potion Fluid
+        primary: '#00e5ff',
+        secondary: '#0055ff',
+        dark: '#001845',
+        deep: '#000a20',
         core: '#ffffff',
-        tendril: 'rgba(0, 242, 255, ',
-        nebula: 'rgba(0, 180, 255, ',
-        particle: '#80ebff'
+        liquidRibbon: 'rgba(0, 229, 255, ',
+        liquidBlob: '#00c8ff'
       },
-      { // 1: Red Dragonfire (Solar Supernova Dust)
+      { // 1: Viscous Molten Dragon Lava
         primary: '#ff4400',
         secondary: '#ff9900',
-        dark: '#300500',
+        dark: '#4a0000',
+        deep: '#200000',
         core: '#fff8ee',
-        tendril: 'rgba(255, 120, 0, ',
-        nebula: 'rgba(255, 60, 0, ',
-        particle: '#ffc470'
+        liquidRibbon: 'rgba(255, 68, 0, ',
+        liquidBlob: '#ff7700'
       },
-      { // 2: Emerald Life (Galactic Mint Fog)
-        primary: '#00ffaa',
+      { // 2: Viscous Emerald Poison / Life Nectar
+        primary: '#00ff88',
         secondary: '#00aa44',
-        dark: '#002010',
+        dark: '#003311',
+        deep: '#001a08',
         core: '#f0fff8',
-        tendril: 'rgba(0, 255, 170, ',
-        nebula: 'rgba(0, 200, 120, ',
-        particle: '#80ffcc'
+        liquidRibbon: 'rgba(0, 255, 136, ',
+        liquidBlob: '#00dd66'
       },
-      { // 3: Void Energy (Cosmic Nether Nebula)
+      { // 3: Viscous Nether Void Fluid
         primary: '#d000ff',
         secondary: '#6600ff',
-        dark: '#180030',
+        dark: '#200040',
+        deep: '#100020',
         core: '#f9f0ff',
-        tendril: 'rgba(208, 0, 255, ',
-        nebula: 'rgba(140, 0, 255, ',
-        particle: '#e599ff'
+        liquidRibbon: 'rgba(208, 0, 255, ',
+        liquidBlob: '#b800ff'
       },
-      { // 4: Holy Sun (Celestial Stardust)
+      { // 4: Viscous Solar Gold Liquid
         primary: '#ffcc00',
         secondary: '#ff8800',
-        dark: '#301a00',
+        dark: '#4a2800',
+        deep: '#201000',
         core: '#ffffff',
-        tendril: 'rgba(255, 204, 0, ',
-        nebula: 'rgba(255, 150, 0, ',
-        particle: '#ffeb99'
+        liquidRibbon: 'rgba(255, 204, 0, ',
+        liquidBlob: '#ffbb00'
       }
     ];
 
@@ -98,76 +98,39 @@ class ManaOverlayApp {
       fps: 60
     };
 
-    // Ethereal Mana Tendrils
-    this.tendrils = [];
-    this.initTendrils();
-
-    // 250+ Particle Cosmic Space Dust Engine
-    this.dustParticles = [];
-    this.nebulaClouds = [];
-    this.twinkleStars = [];
-    this.initCosmicSpaceEngine();
+    // Viscous Liquid Streams & Floating Liquid Blobs (NO STARS / NO GLITTER)
+    this.liquidStreams = [];
+    this.liquidBlobs = [];
+    this.initViscousLiquidEngine();
   }
 
-  initTendrils() {
-    this.tendrils = [];
-    const count = 20;
-    for (let i = 0; i < count; i++) {
-      this.tendrils.push({
+  initViscousLiquidEngine() {
+    // 1. Heavy Liquid Streams (Undulating thick fluid ribbons around the frame)
+    this.liquidStreams = [];
+    for (let i = 0; i < 14; i++) {
+      this.liquidStreams.push({
         side: i % 4,
-        posRatio: (i / count + Math.random() * 0.05) % 1.0,
-        length: 70 + Math.random() * 110,
-        speed: 0.7 + Math.random() * 1.3,
+        posRatio: (i / 14 + Math.random() * 0.08) % 1.0,
+        length: 50 + Math.random() * 80,
+        thickness: 18 + Math.random() * 28,
+        speed: 0.6 + Math.random() * 0.8,
         phase: Math.random() * Math.PI * 2,
-        width: 14 + Math.random() * 26,
-        curl: (Math.random() - 0.5) * 50
-      });
-    }
-  }
-
-  initCosmicSpaceEngine() {
-    // 1. Floating Cosmic Dust Particles (160 Particles)
-    this.dustParticles = [];
-    for (let i = 0; i < 160; i++) {
-      this.dustParticles.push({
-        x: 0,
-        y: 0,
-        side: Math.floor(Math.random() * 4),
-        sideOffset: Math.random(),
-        dist: Math.random() * 120,
-        speed: 0.4 + Math.random() * 1.2,
-        size: 1.0 + Math.random() * 4.5,
-        alpha: Math.random(),
-        wobbleSpeed: 1 + Math.random() * 3,
-        wobbleAmp: 5 + Math.random() * 15
+        viscosity: 25 + Math.random() * 35
       });
     }
 
-    // 2. Volumetric Space Dust Clouds / Nebulae (35 Cloud Puffs)
-    this.nebulaClouds = [];
-    for (let i = 0; i < 35; i++) {
-      this.nebulaClouds.push({
+    // 2. Viscous Liquid Blobs / Droplets oozing smoothly along edges
+    this.liquidBlobs = [];
+    for (let i = 0; i < 30; i++) {
+      this.liquidBlobs.push({
         side: Math.floor(Math.random() * 4),
-        sideOffset: Math.random(),
-        dist: 20 + Math.random() * 90,
-        radius: 30 + Math.random() * 70,
-        expansionSpeed: 0.2 + Math.random() * 0.5,
-        alpha: 0.15 + Math.random() * 0.25,
-        rot: Math.random() * Math.PI * 2,
-        rotSpeed: (Math.random() - 0.5) * 0.4
-      });
-    }
-
-    // 3. Twinkling Arcane Star Sparks (45 Stars)
-    this.twinkleStars = [];
-    for (let i = 0; i < 45; i++) {
-      this.twinkleStars.push({
-        side: Math.floor(Math.random() * 4),
-        sideOffset: Math.random(),
-        dist: 10 + Math.random() * 130,
-        size: 3 + Math.random() * 7,
-        sparkleSpeed: 2 + Math.random() * 5,
-        phase: Math.random() * Math.PI * 2
+        posRatio: Math.random(),
+        dist: Math.random() * 40,
+        rx: 12 + Math.random() * 22,
+        ry: 8 + Math.random() * 16,
+        speed: 0.3 + Math.random() * 0.6,
+        phase: Math.random() * Math.PI * 2,
+        wobbleFreq: 1.5 + Math.random() * 2
       });
     }
   }
@@ -189,7 +152,7 @@ class ManaOverlayApp {
     requestAnimationFrame((t) => this.renderLoop(t));
 
     this.updateVisualGuide();
-    console.log('⚡ Cosmic Space Dust & Nebula Overlay Initialized!');
+    console.log('⚡ Viscous Liquid Mana Engine Initialized!');
   }
 
   handleResize() {
@@ -219,14 +182,14 @@ class ManaOverlayApp {
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    // Deep Cosmic Space Background
+    // Deep Dark Void Background
     ctx.fillStyle = '#030305';
     ctx.fillRect(0, 0, width, height);
 
-    // Render Toploader + Space Dust Cloud Engine
-    this.renderToploaderMana(ctx, timeSec);
+    // Render Viscous Liquid Mana Toploader
+    this.renderViscousManaToploader(ctx, timeSec);
 
-    // FPS Meter
+    // FPS Meter Update
     this.fpsCounter.frames++;
     const now = performance.now();
     if (now - this.fpsCounter.lastTime >= 500) {
@@ -245,9 +208,9 @@ class ManaOverlayApp {
   }
 
   /**
-   * Main Render Engine (Toploader + Space Dust Clouds + Nebulae + Twinkling Stars)
+   * Main Render Pipeline: Viscous Liquid Fluid Engine
    */
-  renderToploaderMana(ctx, time) {
+  renderViscousManaToploader(ctx, time) {
     const { centerX, centerY, width: baseW, height: baseH, scale, rotation, cornerRadius: baseR, borderThickness: baseThickness, glowIntensity, turbulence, theme: themeIdx } = this.state;
 
     const theme = this.themes[themeIdx] || this.themes[0];
@@ -262,54 +225,55 @@ class ManaOverlayApp {
     ctx.rotate(rotation);
 
     // -------------------------------------------------------------
-    // 1. VOLUMETRIC NEBULA SPACE DUST CLOUDS (Space Fog Puffing Outward)
+    // 1. HEAVY LIQUID STREAM RIBBONS (Thick fluid oozing outward)
     // -------------------------------------------------------------
     ctx.save();
-    for (const cloud of this.nebulaClouds) {
-      cloud.dist += 0.2 * cloud.expansionSpeed * turbulence;
-      cloud.rot += 0.005 * cloud.rotSpeed;
-      if (cloud.dist > 130) {
-        cloud.dist = 10;
-        cloud.side = Math.floor(Math.random() * 4);
-        cloud.sideOffset = Math.random();
-      }
+    for (const stream of this.liquidStreams) {
+      this.drawViscousFluidStream(ctx, stream, w, h, r, thickness, time, turbulence, glowIntensity, theme);
+    }
+    ctx.restore();
 
-      const pt = this.getEdgePos(cloud.side, cloud.sideOffset, w, h);
-      const outDir = this.getOutVector(cloud.side);
-      const cx = pt.x + outDir.x * cloud.dist;
-      const cy = pt.y + outDir.y * cloud.dist;
+    // -------------------------------------------------------------
+    // 2. VISCOUS LIQUID BLOBS & DROPLETS (Fluid surface tension oozing)
+    // -------------------------------------------------------------
+    ctx.save();
+    for (const blob of this.liquidBlobs) {
+      blob.posRatio = (blob.posRatio + blob.speed * 0.003 * turbulence) % 1.0;
+      const pt = this.getEdgePos(blob.side, blob.posRatio, w, h);
+      const outDir = this.getOutVector(blob.side);
 
-      const fadeAlpha = (1.0 - cloud.dist / 130) * cloud.alpha * Math.min(glowIntensity, 1.6);
+      const wobble = Math.sin(time * blob.wobbleFreq + blob.phase) * 6;
+      const bx = pt.x + outDir.x * (blob.dist + wobble);
+      const by = pt.y + outDir.y * (blob.dist + wobble);
 
-      const radGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, cloud.radius);
-      radGrad.addColorStop(0, `${theme.nebula}${fadeAlpha})`);
-      radGrad.addColorStop(0.6, `${theme.nebula}${fadeAlpha * 0.4})`);
-      radGrad.addColorStop(1, `${theme.nebula}0)`);
+      const radiusX = blob.rx * (0.9 + 0.2 * Math.sin(time * 2 + blob.phase));
+      const radiusY = blob.ry * (0.9 + 0.2 * Math.cos(time * 2 + blob.phase));
 
-      ctx.fillStyle = radGrad;
+      const blobGrad = ctx.createRadialGradient(bx, by, 0, bx, by, Math.max(radiusX, radiusY));
+      blobGrad.addColorStop(0, theme.core);
+      blobGrad.addColorStop(0.4, theme.primary);
+      blobGrad.addColorStop(0.85, theme.secondary);
+      blobGrad.addColorStop(1, `${theme.secondary}0`);
+
+      ctx.fillStyle = blobGrad;
+      ctx.shadowColor = theme.primary;
+      ctx.shadowBlur = 18 * glowIntensity;
+      ctx.globalAlpha = 0.85 * Math.min(glowIntensity, 1.4);
+
       ctx.beginPath();
-      ctx.arc(cx, cy, cloud.radius, 0, Math.PI * 2);
+      ctx.ellipse(bx, by, radiusX, radiusY, time + blob.phase, 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.restore();
 
     // -------------------------------------------------------------
-    // 2. ETHEREAL MANA TENDRILS (Smoke Ribbons Flowing Outward)
-    // -------------------------------------------------------------
-    ctx.save();
-    for (const tendril of this.tendrils) {
-      this.drawEtherealTendril(ctx, tendril, w, h, r, thickness, time, turbulence, glowIntensity, theme);
-    }
-    ctx.restore();
-
-    // -------------------------------------------------------------
-    // 3. TOPLOADER PLASTIC FRAME SHAPE (Multi-Pass Bloom Glow)
+    // 3. TOPLOADER BASE FRAME (Deep Fluid Sapphire Foundation)
     // -------------------------------------------------------------
     const glowPasses = [
-      { blur: 54 * glowIntensity, alpha: 0.3 * glowIntensity, color: theme.secondary },
-      { blur: 32 * glowIntensity, alpha: 0.5 * glowIntensity, color: theme.primary },
-      { blur: 16 * glowIntensity, alpha: 0.8 * glowIntensity, color: theme.primary },
-      { blur: 4  * glowIntensity, alpha: 1.0 * glowIntensity, color: theme.core }
+      { blur: 50 * glowIntensity, alpha: 0.3 * glowIntensity, color: theme.secondary },
+      { blur: 28 * glowIntensity, alpha: 0.55 * glowIntensity, color: theme.primary },
+      { blur: 12 * glowIntensity, alpha: 0.85 * glowIntensity, color: theme.primary },
+      { blur: 3  * glowIntensity, alpha: 1.0  * glowIntensity, color: theme.core }
     ];
 
     for (const pass of glowPasses) {
@@ -328,18 +292,39 @@ class ManaOverlayApp {
     }
 
     // -------------------------------------------------------------
-    // 4. TOPLOADER DETAIL HIGHLIGHTS (Opening Lip & Inner Channel)
+    // 4. ANIMATED VISCOUS LIQUID SURFACE WAVE ALONG BORDER
     // -------------------------------------------------------------
     ctx.save();
+    const waveCount = 3;
+    for (let i = 0; i < waveCount; i++) {
+      const wavePhase = time * (0.8 + i * 0.3) * turbulence;
+      const waveAlpha = (0.5 + 0.3 * Math.sin(wavePhase)) * Math.min(glowIntensity, 1.5);
+
+      ctx.strokeStyle = i % 2 === 0 ? theme.primary : theme.secondary;
+      ctx.lineWidth = thickness * (0.7 + 0.25 * Math.cos(wavePhase));
+      ctx.globalAlpha = waveAlpha;
+      ctx.shadowColor = theme.primary;
+      ctx.shadowBlur = 16;
+
+      this.drawToploaderPath(ctx, -w / 2, -h / 2, w, h, r);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // -------------------------------------------------------------
+    // 5. TOPLOADER DETAIL HIGHLIGHTS (Insertion Lip & Inner Channel)
+    // -------------------------------------------------------------
+    ctx.save();
+    // Inner channel line
     ctx.strokeStyle = theme.primary;
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 4;
     ctx.globalAlpha = 0.95 * Math.min(glowIntensity, 1.3);
     ctx.shadowColor = theme.primary;
     ctx.shadowBlur = 12;
     this.drawToploaderPath(ctx, -w / 2 + thickness / 2, -h / 2 + thickness / 2, w - thickness, h - thickness, Math.max(4, r - thickness / 2));
     ctx.stroke();
 
-    // Insertion Lip Highlight
+    // Top Insertion Lip Specular Highlight
     ctx.beginPath();
     ctx.moveTo(-w / 2 + 8, -h / 2 + 10);
     ctx.lineTo(w / 2 - 8, -h / 2 + 10);
@@ -347,67 +332,12 @@ class ManaOverlayApp {
     ctx.lineWidth = 4;
     ctx.globalAlpha = 1.0;
     ctx.shadowColor = theme.primary;
-    ctx.shadowBlur = 14;
+    ctx.shadowBlur = 16;
     ctx.stroke();
     ctx.restore();
 
     // -------------------------------------------------------------
-    // 5. 160+ COSMIC DUST PARTICLES (Drifting into Space)
-    // -------------------------------------------------------------
-    ctx.save();
-    for (const p of this.dustParticles) {
-      p.dist += p.speed * 0.8 * turbulence;
-      if (p.dist > 150) {
-        p.dist = 0;
-        p.side = Math.floor(Math.random() * 4);
-        p.sideOffset = Math.random();
-      }
-
-      const pt = this.getEdgePos(p.side, p.sideOffset, w, h);
-      const outDir = this.getOutVector(p.side);
-      const wobble = Math.sin(time * p.wobbleSpeed + p.dist * 0.05) * p.wobbleAmp;
-
-      const px = pt.x + outDir.x * p.dist + outDir.y * wobble;
-      const py = pt.y + outDir.y * p.dist - outDir.x * wobble;
-
-      const pAlpha = (1.0 - p.dist / 150) * (0.4 + 0.6 * Math.sin(time * 3 + p.dist)) * Math.min(glowIntensity, 1.5);
-
-      ctx.fillStyle = p.dist < 50 ? theme.core : theme.particle;
-      ctx.shadowColor = theme.primary;
-      ctx.shadowBlur = p.size * 3;
-      ctx.globalAlpha = Math.max(0, pAlpha);
-
-      ctx.beginPath();
-      ctx.arc(px, py, p.size, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.restore();
-
-    // -------------------------------------------------------------
-    // 6. TWINKLING ARCANE STARS (4-Point Star Sparks)
-    // -------------------------------------------------------------
-    ctx.save();
-    for (const star of this.twinkleStars) {
-      const pt = this.getEdgePos(star.side, star.sideOffset, w, h);
-      const outDir = this.getOutVector(star.side);
-      const sx = pt.x + outDir.x * star.dist;
-      const sy = pt.y + outDir.y * star.dist;
-
-      const twinkle = Math.pow(Math.max(0, Math.sin(time * star.sparkleSpeed + star.phase)), 3.0) * Math.min(glowIntensity, 1.5);
-
-      if (twinkle > 0.05) {
-        ctx.fillStyle = theme.core;
-        ctx.shadowColor = theme.primary;
-        ctx.shadowBlur = 15;
-        ctx.globalAlpha = twinkle;
-
-        this.drawStar(ctx, sx, sy, star.size * (0.8 + 0.4 * twinkle));
-      }
-    }
-    ctx.restore();
-
-    // -------------------------------------------------------------
-    // 7. CLEAR HOLLOW CENTER (Cards rest un-obscured)
+    // 6. CLEAR HOLLOW CENTER (Cards rest un-obscured)
     // -------------------------------------------------------------
     ctx.save();
     ctx.globalCompositeOperation = 'destination-out';
@@ -418,14 +348,44 @@ class ManaOverlayApp {
     ctx.restore();
   }
 
-  drawStar(ctx, cx, cy, size) {
+  /**
+   * Draws a thick, viscous liquid stream undulating away from the border
+   */
+  drawViscousFluidStream(ctx, stream, w, h, r, thickness, time, turbulence, glowIntensity, theme) {
+    const pt = this.getEdgePos(stream.side, stream.posRatio, w, h);
+    const outDir = this.getOutVector(stream.side);
+
+    const startX = pt.x;
+    const startY = pt.y;
+
+    const sTime = time * stream.speed * turbulence + stream.phase;
+    const len = stream.length * (0.85 + 0.3 * Math.sin(sTime));
+
+    const cp1x = startX + outDir.x * (len * 0.4) + outDir.y * (Math.sin(sTime) * stream.viscosity);
+    const cp1y = startY + outDir.y * (len * 0.4) - outDir.x * (Math.sin(sTime) * stream.viscosity);
+
+    const cp2x = startX + outDir.x * (len * 0.8) + outDir.y * (Math.cos(sTime * 1.3) * stream.viscosity * 1.2);
+    const cp2y = startY + outDir.y * (len * 0.8) - outDir.x * (Math.cos(sTime * 1.3) * stream.viscosity * 1.2);
+
+    const endX = startX + outDir.x * len + outDir.y * (Math.sin(sTime * 1.8) * stream.viscosity);
+    const endY = startY + outDir.y * len - outDir.x * (Math.sin(sTime * 1.8) * stream.viscosity);
+
+    // Thick liquid gradient fade
+    const grad = ctx.createLinearGradient(startX, startY, endX, endY);
+    grad.addColorStop(0, `${theme.liquidRibbon}${0.9 * Math.min(glowIntensity, 1.5)})`);
+    grad.addColorStop(0.5, `${theme.liquidRibbon}${0.5 * Math.min(glowIntensity, 1.5)})`);
+    grad.addColorStop(1, `${theme.liquidRibbon}0)`);
+
     ctx.beginPath();
-    ctx.moveTo(cx, cy - size);
-    ctx.quadraticCurveTo(cx, cy, cx + size, cy);
-    ctx.quadraticCurveTo(cx, cy, cx, cy + size);
-    ctx.quadraticCurveTo(cx, cy, cx - size, cy);
-    ctx.quadraticCurveTo(cx, cy, cx, cy - size);
-    ctx.fill();
+    ctx.moveTo(startX, startY);
+    ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, endX, endY);
+
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = stream.thickness * (0.8 + 0.35 * Math.sin(sTime * 1.5));
+    ctx.lineCap = 'round';
+    ctx.shadowColor = theme.primary;
+    ctx.shadowBlur = 22;
+    ctx.stroke();
   }
 
   getEdgePos(side, offset, w, h) {
@@ -440,42 +400,6 @@ class ManaOverlayApp {
     if (side === 1) return { x: 1, y: 0 };
     if (side === 2) return { x: 0, y: 1 };
     return { x: -1, y: 0 };
-  }
-
-  drawEtherealTendril(ctx, tendril, w, h, r, thickness, time, turbulence, glowIntensity, theme) {
-    const pt = this.getEdgePos(tendril.side, tendril.posRatio, w, h);
-    const outDir = this.getOutVector(tendril.side);
-
-    const startX = pt.x;
-    const startY = pt.y;
-
-    const tTime = time * tendril.speed * turbulence + tendril.phase;
-    const len = tendril.length * (0.8 + 0.4 * Math.sin(tTime));
-
-    const cp1x = startX + outDir.x * (len * 0.4) + outDir.y * (Math.sin(tTime) * tendril.curl);
-    const cp1y = startY + outDir.y * (len * 0.4) - outDir.x * (Math.sin(tTime) * tendril.curl);
-
-    const cp2x = startX + outDir.x * (len * 0.8) + outDir.y * (Math.cos(tTime * 1.5) * tendril.curl * 1.4);
-    const cp2y = startY + outDir.y * (len * 0.8) - outDir.x * (Math.cos(tTime * 1.5) * tendril.curl * 1.4);
-
-    const endX = startX + outDir.x * len + outDir.y * (Math.sin(tTime * 2) * tendril.curl);
-    const endY = startY + outDir.y * len - outDir.x * (Math.sin(tTime * 2) * tendril.curl);
-
-    const grad = ctx.createLinearGradient(startX, startY, endX, endY);
-    grad.addColorStop(0, `${theme.tendril}${0.85 * Math.min(glowIntensity, 1.5)})`);
-    grad.addColorStop(0.5, `${theme.tendril}${0.45 * Math.min(glowIntensity, 1.5)})`);
-    grad.addColorStop(1, `${theme.tendril}0)`);
-
-    ctx.beginPath();
-    ctx.moveTo(startX, startY);
-    ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, endX, endY);
-
-    ctx.strokeStyle = grad;
-    ctx.lineWidth = tendril.width * (0.8 + 0.3 * Math.sin(tTime * 2));
-    ctx.lineCap = 'round';
-    ctx.shadowColor = theme.primary;
-    ctx.shadowBlur = 20;
-    ctx.stroke();
   }
 
   drawToploaderPath(ctx, x, y, width, height, radius) {
@@ -704,17 +628,17 @@ class ManaOverlayApp {
       this.state.scale = 1.0;
       this.state.rotation = 0;
       this.state.cornerRadius = 18;
-      this.state.borderThickness = 36;
+      this.state.borderThickness = 38;
       this.state.glowIntensity = 2.2;
-      this.state.turbulence = 1.2;
+      this.state.turbulence = 1.0;
       this.state.theme = 0;
 
       document.getElementById('slider-glow').value = 2.2;
       document.getElementById('val-glow').textContent = '2.2x';
-      document.getElementById('slider-thickness').value = 36;
-      document.getElementById('val-thickness').textContent = '36px';
-      document.getElementById('slider-speed').value = 1.2;
-      document.getElementById('val-speed').textContent = '1.2x';
+      document.getElementById('slider-thickness').value = 38;
+      document.getElementById('val-thickness').textContent = '38px';
+      document.getElementById('slider-speed').value = 1.0;
+      document.getElementById('val-speed').textContent = '1.0x';
       document.getElementById('slider-radius').value = 18;
       document.getElementById('val-radius').textContent = '18px';
 
@@ -799,6 +723,6 @@ class ManaOverlayApp {
 window.addEventListener('DOMContentLoaded', () => {
   const app = new ManaOverlayApp();
   app.init().catch((err) => {
-    console.error('Failed to initialize Cosmic Space Dust Overlay:', err);
+    console.error('Failed to initialize Viscous Liquid Mana Engine:', err);
   });
 });
