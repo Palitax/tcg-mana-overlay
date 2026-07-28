@@ -1,6 +1,6 @@
 /**
  * High-End TCG Toploader Liquid Mana Overlay
- * Inspired by World of Warcraft & Manacards Ethereal Fluid Aesthetics
+ * Particle-Heavy Cosmic Space Dust & Nebula Engine
  */
 
 class ManaOverlayApp {
@@ -13,12 +13,12 @@ class ManaOverlayApp {
       centerX: window.innerWidth / 2,
       centerY: window.innerHeight / 2,
       width: 320,
-      height: 446, // Toploader aspect ratio (~3" x 4.25")
+      height: 446,
       scale: 1.0,
-      rotation: 0, // 90° increments
+      rotation: 0,
       cornerRadius: 18,
       borderThickness: 36,
-      glowIntensity: 2.0,
+      glowIntensity: 2.2,
       turbulence: 1.2,
       theme: 0, // 0: Blue Mana, 1: Red Fire, 2: Emerald Green, 3: Nether Void, 4: Holy Sun
       isLocked: false,
@@ -34,47 +34,52 @@ class ManaOverlayApp {
       oversized: { width: 370, height: 520, name: 'Oversized (Commander)' }
     };
 
-    // Color Palettes (Rich Warcraft & Manacards Ethereal Tones)
+    // Theme Color Palettes with Cosmic Nebula Tones
     this.themes = [
-      { // 0: Blue Mana (Bild 2 Manacards)
+      { // 0: Blue Mana (Space Cyan & Arcane Nebula)
         primary: '#00f2ff',
         secondary: '#0066ff',
-        dark: '#001845',
+        dark: '#001030',
         core: '#ffffff',
         tendril: 'rgba(0, 242, 255, ',
-        particle: '#70e0ff'
+        nebula: 'rgba(0, 180, 255, ',
+        particle: '#80ebff'
       },
-      { // 1: Red Dragonfire
+      { // 1: Red Dragonfire (Solar Supernova Dust)
         primary: '#ff4400',
         secondary: '#ff9900',
-        dark: '#4a0000',
+        dark: '#300500',
         core: '#fff8ee',
         tendril: 'rgba(255, 120, 0, ',
-        particle: '#ffb700'
+        nebula: 'rgba(255, 60, 0, ',
+        particle: '#ffc470'
       },
-      { // 2: Emerald Life
+      { // 2: Emerald Life (Galactic Mint Fog)
         primary: '#00ffaa',
         secondary: '#00aa44',
-        dark: '#003311',
+        dark: '#002010',
         core: '#f0fff8',
         tendril: 'rgba(0, 255, 170, ',
-        particle: '#70ffcc'
+        nebula: 'rgba(0, 200, 120, ',
+        particle: '#80ffcc'
       },
-      { // 3: Void Energy
+      { // 3: Void Energy (Cosmic Nether Nebula)
         primary: '#d000ff',
         secondary: '#6600ff',
-        dark: '#200040',
+        dark: '#180030',
         core: '#f9f0ff',
         tendril: 'rgba(208, 0, 255, ',
-        particle: '#e080ff'
+        nebula: 'rgba(140, 0, 255, ',
+        particle: '#e599ff'
       },
-      { // 4: Holy Sun
+      { // 4: Holy Sun (Celestial Stardust)
         primary: '#ffcc00',
         secondary: '#ff8800',
-        dark: '#4a2800',
+        dark: '#301a00',
         core: '#ffffff',
         tendril: 'rgba(255, 204, 0, ',
-        particle: '#ffe066'
+        nebula: 'rgba(255, 150, 0, ',
+        particle: '#ffeb99'
       }
     ];
 
@@ -93,44 +98,76 @@ class ManaOverlayApp {
       fps: 60
     };
 
-    // Ethereal Mana Tendrils (Wisps wafting away like Bild 2)
+    // Ethereal Mana Tendrils
     this.tendrils = [];
     this.initTendrils();
 
-    // Floating Arcane Dust Particles
-    this.particles = [];
-    this.initParticles();
+    // 250+ Particle Cosmic Space Dust Engine
+    this.dustParticles = [];
+    this.nebulaClouds = [];
+    this.twinkleStars = [];
+    this.initCosmicSpaceEngine();
   }
 
   initTendrils() {
     this.tendrils = [];
-    const count = 18; // 18 flowing smoke wisps around the perimeter
+    const count = 20;
     for (let i = 0; i < count; i++) {
       this.tendrils.push({
-        side: i % 4, // 0: Top, 1: Right, 2: Bottom, 3: Left
-        posRatio: (i / count + Math.random() * 0.05) % 1.0, // position along side
-        length: 60 + Math.random() * 90, // tendril length extending outward
-        speed: 0.8 + Math.random() * 1.2,
+        side: i % 4,
+        posRatio: (i / count + Math.random() * 0.05) % 1.0,
+        length: 70 + Math.random() * 110,
+        speed: 0.7 + Math.random() * 1.3,
         phase: Math.random() * Math.PI * 2,
-        width: 12 + Math.random() * 24,
-        curl: (Math.random() - 0.5) * 40
+        width: 14 + Math.random() * 26,
+        curl: (Math.random() - 0.5) * 50
       });
     }
   }
 
-  initParticles() {
-    this.particles = [];
-    for (let i = 0; i < 60; i++) {
-      this.particles.push({
+  initCosmicSpaceEngine() {
+    // 1. Floating Cosmic Dust Particles (160 Particles)
+    this.dustParticles = [];
+    for (let i = 0; i < 160; i++) {
+      this.dustParticles.push({
         x: 0,
         y: 0,
-        vx: (Math.random() - 0.5) * 1.2,
-        vy: (Math.random() - 0.5) * 1.2,
-        life: Math.random(),
-        maxLife: 1.5 + Math.random() * 2.5,
-        size: 1.5 + Math.random() * 3.5,
         side: Math.floor(Math.random() * 4),
-        sideOffset: Math.random()
+        sideOffset: Math.random(),
+        dist: Math.random() * 120,
+        speed: 0.4 + Math.random() * 1.2,
+        size: 1.0 + Math.random() * 4.5,
+        alpha: Math.random(),
+        wobbleSpeed: 1 + Math.random() * 3,
+        wobbleAmp: 5 + Math.random() * 15
+      });
+    }
+
+    // 2. Volumetric Space Dust Clouds / Nebulae (35 Cloud Puffs)
+    this.nebulaClouds = [];
+    for (let i = 0; i < 35; i++) {
+      this.nebulaClouds.push({
+        side: Math.floor(Math.random() * 4),
+        sideOffset: Math.random(),
+        dist: 20 + Math.random() * 90,
+        radius: 30 + Math.random() * 70,
+        expansionSpeed: 0.2 + Math.random() * 0.5,
+        alpha: 0.15 + Math.random() * 0.25,
+        rot: Math.random() * Math.PI * 2,
+        rotSpeed: (Math.random() - 0.5) * 0.4
+      });
+    }
+
+    // 3. Twinkling Arcane Star Sparks (45 Stars)
+    this.twinkleStars = [];
+    for (let i = 0; i < 45; i++) {
+      this.twinkleStars.push({
+        side: Math.floor(Math.random() * 4),
+        sideOffset: Math.random(),
+        dist: 10 + Math.random() * 130,
+        size: 3 + Math.random() * 7,
+        sparkleSpeed: 2 + Math.random() * 5,
+        phase: Math.random() * Math.PI * 2
       });
     }
   }
@@ -152,7 +189,7 @@ class ManaOverlayApp {
     requestAnimationFrame((t) => this.renderLoop(t));
 
     this.updateVisualGuide();
-    console.log('⚡ Toploader Liquid Mana Overlay Engine Initialized!');
+    console.log('⚡ Cosmic Space Dust & Nebula Overlay Initialized!');
   }
 
   handleResize() {
@@ -182,14 +219,14 @@ class ManaOverlayApp {
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    // Dark Void Background
+    // Deep Cosmic Space Background
     ctx.fillStyle = '#030305';
     ctx.fillRect(0, 0, width, height);
 
-    // Render Liquid Mana Overlay Frame & Ethereal Flow
+    // Render Toploader + Space Dust Cloud Engine
     this.renderToploaderMana(ctx, timeSec);
 
-    // FPS Meter Update
+    // FPS Meter
     this.fpsCounter.frames++;
     const now = performance.now();
     if (now - this.fpsCounter.lastTime >= 500) {
@@ -208,7 +245,7 @@ class ManaOverlayApp {
   }
 
   /**
-   * Main Render Pipeline for Toploader Shape + Liquid Mana Wisps
+   * Main Render Engine (Toploader + Space Dust Clouds + Nebulae + Twinkling Stars)
    */
   renderToploaderMana(ctx, time) {
     const { centerX, centerY, width: baseW, height: baseH, scale, rotation, cornerRadius: baseR, borderThickness: baseThickness, glowIntensity, turbulence, theme: themeIdx } = this.state;
@@ -225,7 +262,39 @@ class ManaOverlayApp {
     ctx.rotate(rotation);
 
     // -------------------------------------------------------------
-    // 1. ETHEREAL MANA TENDRILS (Smoke Wisps Flowing Outward - Bild 2)
+    // 1. VOLUMETRIC NEBULA SPACE DUST CLOUDS (Space Fog Puffing Outward)
+    // -------------------------------------------------------------
+    ctx.save();
+    for (const cloud of this.nebulaClouds) {
+      cloud.dist += 0.2 * cloud.expansionSpeed * turbulence;
+      cloud.rot += 0.005 * cloud.rotSpeed;
+      if (cloud.dist > 130) {
+        cloud.dist = 10;
+        cloud.side = Math.floor(Math.random() * 4);
+        cloud.sideOffset = Math.random();
+      }
+
+      const pt = this.getEdgePos(cloud.side, cloud.sideOffset, w, h);
+      const outDir = this.getOutVector(cloud.side);
+      const cx = pt.x + outDir.x * cloud.dist;
+      const cy = pt.y + outDir.y * cloud.dist;
+
+      const fadeAlpha = (1.0 - cloud.dist / 130) * cloud.alpha * Math.min(glowIntensity, 1.6);
+
+      const radGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, cloud.radius);
+      radGrad.addColorStop(0, `${theme.nebula}${fadeAlpha})`);
+      radGrad.addColorStop(0.6, `${theme.nebula}${fadeAlpha * 0.4})`);
+      radGrad.addColorStop(1, `${theme.nebula}0)`);
+
+      ctx.fillStyle = radGrad;
+      ctx.beginPath();
+      ctx.arc(cx, cy, cloud.radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+
+    // -------------------------------------------------------------
+    // 2. ETHEREAL MANA TENDRILS (Smoke Ribbons Flowing Outward)
     // -------------------------------------------------------------
     ctx.save();
     for (const tendril of this.tendrils) {
@@ -234,13 +303,13 @@ class ManaOverlayApp {
     ctx.restore();
 
     // -------------------------------------------------------------
-    // 2. TOPLOADER PLASTIC FRAME SHAPE (Multi-Pass Bloom Glow)
+    // 3. TOPLOADER PLASTIC FRAME SHAPE (Multi-Pass Bloom Glow)
     // -------------------------------------------------------------
     const glowPasses = [
-      { blur: 48 * glowIntensity, alpha: 0.25 * glowIntensity, color: theme.secondary },
-      { blur: 28 * glowIntensity, alpha: 0.45 * glowIntensity, color: theme.primary },
-      { blur: 14 * glowIntensity, alpha: 0.75 * glowIntensity, color: theme.primary },
-      { blur: 4  * glowIntensity, alpha: 1.0  * glowIntensity, color: theme.core }
+      { blur: 54 * glowIntensity, alpha: 0.3 * glowIntensity, color: theme.secondary },
+      { blur: 32 * glowIntensity, alpha: 0.5 * glowIntensity, color: theme.primary },
+      { blur: 16 * glowIntensity, alpha: 0.8 * glowIntensity, color: theme.primary },
+      { blur: 4  * glowIntensity, alpha: 1.0 * glowIntensity, color: theme.core }
     ];
 
     for (const pass of glowPasses) {
@@ -253,78 +322,59 @@ class ManaOverlayApp {
       ctx.lineWidth = thickness;
       ctx.lineJoin = 'round';
 
-      // Draw Toploader Path (Rounded bottom corners, open lip top)
       this.drawToploaderPath(ctx, -w / 2, -h / 2, w, h, r);
       ctx.stroke();
       ctx.restore();
     }
 
     // -------------------------------------------------------------
-    // 3. TOPLOADER DETAIL HIGHLIGHTS (Opening Lip & Inner Channel)
+    // 4. TOPLOADER DETAIL HIGHLIGHTS (Opening Lip & Inner Channel)
     // -------------------------------------------------------------
     ctx.save();
-    // Inner Channel Guide Line
     ctx.strokeStyle = theme.primary;
     ctx.lineWidth = 3;
-    ctx.globalAlpha = 0.9 * Math.min(glowIntensity, 1.3);
+    ctx.globalAlpha = 0.95 * Math.min(glowIntensity, 1.3);
     ctx.shadowColor = theme.primary;
-    ctx.shadowBlur = 10;
+    ctx.shadowBlur = 12;
     this.drawToploaderPath(ctx, -w / 2 + thickness / 2, -h / 2 + thickness / 2, w - thickness, h - thickness, Math.max(4, r - thickness / 2));
     ctx.stroke();
 
-    // Toploader Top Insertion Lip Highlight (The distinct opening line of a physical toploader)
+    // Insertion Lip Highlight
     ctx.beginPath();
     ctx.moveTo(-w / 2 + 8, -h / 2 + 10);
     ctx.lineTo(w / 2 - 8, -h / 2 + 10);
     ctx.strokeStyle = theme.core;
     ctx.lineWidth = 4;
-    ctx.globalAlpha = 0.95;
+    ctx.globalAlpha = 1.0;
     ctx.shadowColor = theme.primary;
-    ctx.shadowBlur = 12;
+    ctx.shadowBlur = 14;
     ctx.stroke();
     ctx.restore();
 
     // -------------------------------------------------------------
-    // 4. FLOATING ARCANE DUST PARTICLES (Drifting off edges)
+    // 5. 160+ COSMIC DUST PARTICLES (Drifting into Space)
     // -------------------------------------------------------------
     ctx.save();
-    for (const p of this.particles) {
-      p.life += 0.016 * turbulence;
-      if (p.life > p.maxLife) {
-        p.life = 0;
+    for (const p of this.dustParticles) {
+      p.dist += p.speed * 0.8 * turbulence;
+      if (p.dist > 150) {
+        p.dist = 0;
         p.side = Math.floor(Math.random() * 4);
         p.sideOffset = Math.random();
       }
 
-      // Calculate anchor point on Toploader edge
-      let originX = 0, originY = 0, dirX = 0, dirY = 0;
-      if (p.side === 0) { // Top edge
-        originX = -w / 2 + p.sideOffset * w;
-        originY = -h / 2;
-        dirY = -1; dirX = (Math.random() - 0.5) * 0.8;
-      } else if (p.side === 1) { // Right edge
-        originX = w / 2;
-        originY = -h / 2 + p.sideOffset * h;
-        dirX = 1; dirY = (Math.random() - 0.5) * 0.8;
-      } else if (p.side === 2) { // Bottom edge
-        originX = -w / 2 + p.sideOffset * w;
-        originY = h / 2;
-        dirY = 1; dirX = (Math.random() - 0.5) * 0.8;
-      } else { // Left edge
-        originX = -w / 2;
-        originY = -h / 2 + p.sideOffset * h;
-        dirX = -1; dirY = (Math.random() - 0.5) * 0.8;
-      }
+      const pt = this.getEdgePos(p.side, p.sideOffset, w, h);
+      const outDir = this.getOutVector(p.side);
+      const wobble = Math.sin(time * p.wobbleSpeed + p.dist * 0.05) * p.wobbleAmp;
 
-      const dist = p.life * 45;
-      const px = originX + dirX * dist + Math.sin(time * 3 + p.sideOffset * 10) * 8;
-      const py = originY + dirY * dist + Math.cos(time * 3 + p.sideOffset * 10) * 8;
+      const px = pt.x + outDir.x * p.dist + outDir.y * wobble;
+      const py = pt.y + outDir.y * p.dist - outDir.x * wobble;
 
-      const pAlpha = (1.0 - p.life / p.maxLife) * Math.min(glowIntensity, 1.4);
+      const pAlpha = (1.0 - p.dist / 150) * (0.4 + 0.6 * Math.sin(time * 3 + p.dist)) * Math.min(glowIntensity, 1.5);
 
-      ctx.fillStyle = theme.core;
+      ctx.fillStyle = p.dist < 50 ? theme.core : theme.particle;
       ctx.shadowColor = theme.primary;
-      ctx.shadowBlur = 12;
+      ctx.shadowBlur = p.size * 3;
       ctx.globalAlpha = Math.max(0, pAlpha);
 
       ctx.beginPath();
@@ -334,7 +384,30 @@ class ManaOverlayApp {
     ctx.restore();
 
     // -------------------------------------------------------------
-    // 5. CLEAR HOLLOW CENTER (Cards rest cleanly without backlighting)
+    // 6. TWINKLING ARCANE STARS (4-Point Star Sparks)
+    // -------------------------------------------------------------
+    ctx.save();
+    for (const star of this.twinkleStars) {
+      const pt = this.getEdgePos(star.side, star.sideOffset, w, h);
+      const outDir = this.getOutVector(star.side);
+      const sx = pt.x + outDir.x * star.dist;
+      const sy = pt.y + outDir.y * star.dist;
+
+      const twinkle = Math.pow(Math.max(0, Math.sin(time * star.sparkleSpeed + star.phase)), 3.0) * Math.min(glowIntensity, 1.5);
+
+      if (twinkle > 0.05) {
+        ctx.fillStyle = theme.core;
+        ctx.shadowColor = theme.primary;
+        ctx.shadowBlur = 15;
+        ctx.globalAlpha = twinkle;
+
+        this.drawStar(ctx, sx, sy, star.size * (0.8 + 0.4 * twinkle));
+      }
+    }
+    ctx.restore();
+
+    // -------------------------------------------------------------
+    // 7. CLEAR HOLLOW CENTER (Cards rest un-obscured)
     // -------------------------------------------------------------
     ctx.save();
     ctx.globalCompositeOperation = 'destination-out';
@@ -345,49 +418,52 @@ class ManaOverlayApp {
     ctx.restore();
   }
 
-  /**
-   * Draws a smooth, undulating ethereal Mana tendril wafting outward from the border (Bild 2 style)
-   */
-  drawEtherealTendril(ctx, tendril, w, h, r, thickness, time, turbulence, glowIntensity, theme) {
-    let startX = 0, startY = 0;
-    let outAngle = 0;
+  drawStar(ctx, cx, cy, size) {
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - size);
+    ctx.quadraticCurveTo(cx, cy, cx + size, cy);
+    ctx.quadraticCurveTo(cx, cy, cx, cy + size);
+    ctx.quadraticCurveTo(cx, cy, cx - size, cy);
+    ctx.quadraticCurveTo(cx, cy, cx, cy - size);
+    ctx.fill();
+  }
 
-    // Anchor position along the 4 Toploader edges
-    if (tendril.side === 0) { // Top
-      startX = -w / 2 + tendril.posRatio * w;
-      startY = -h / 2;
-      outAngle = -Math.PI / 2;
-    } else if (tendril.side === 1) { // Right
-      startX = w / 2;
-      startY = -h / 2 + tendril.posRatio * h;
-      outAngle = 0;
-    } else if (tendril.side === 2) { // Bottom
-      startX = -w / 2 + tendril.posRatio * w;
-      startY = h / 2;
-      outAngle = Math.PI / 2;
-    } else { // Left
-      startX = -w / 2;
-      startY = -h / 2 + tendril.posRatio * h;
-      outAngle = Math.PI;
-    }
+  getEdgePos(side, offset, w, h) {
+    if (side === 0) return { x: -w / 2 + offset * w, y: -h / 2 };
+    if (side === 1) return { x: w / 2, y: -h / 2 + offset * h };
+    if (side === 2) return { x: -w / 2 + offset * w, y: h / 2 };
+    return { x: -w / 2, y: -h / 2 + offset * h };
+  }
+
+  getOutVector(side) {
+    if (side === 0) return { x: 0, y: -1 };
+    if (side === 1) return { x: 1, y: 0 };
+    if (side === 2) return { x: 0, y: 1 };
+    return { x: -1, y: 0 };
+  }
+
+  drawEtherealTendril(ctx, tendril, w, h, r, thickness, time, turbulence, glowIntensity, theme) {
+    const pt = this.getEdgePos(tendril.side, tendril.posRatio, w, h);
+    const outDir = this.getOutVector(tendril.side);
+
+    const startX = pt.x;
+    const startY = pt.y;
 
     const tTime = time * tendril.speed * turbulence + tendril.phase;
     const len = tendril.length * (0.8 + 0.4 * Math.sin(tTime));
 
-    // Calculate undulating curve control points
-    const cp1x = startX + Math.cos(outAngle) * (len * 0.4) + Math.sin(tTime) * tendril.curl;
-    const cp1y = startY + Math.sin(outAngle) * (len * 0.4) + Math.cos(tTime) * tendril.curl;
+    const cp1x = startX + outDir.x * (len * 0.4) + outDir.y * (Math.sin(tTime) * tendril.curl);
+    const cp1y = startY + outDir.y * (len * 0.4) - outDir.x * (Math.sin(tTime) * tendril.curl);
 
-    const cp2x = startX + Math.cos(outAngle) * (len * 0.8) + Math.cos(tTime * 1.5) * (tendril.curl * 1.4);
-    const cp2y = startY + Math.sin(outAngle) * (len * 0.8) + Math.sin(tTime * 1.5) * (tendril.curl * 1.4);
+    const cp2x = startX + outDir.x * (len * 0.8) + outDir.y * (Math.cos(tTime * 1.5) * tendril.curl * 1.4);
+    const cp2y = startY + outDir.y * (len * 0.8) - outDir.x * (Math.cos(tTime * 1.5) * tendril.curl * 1.4);
 
-    const endX = startX + Math.cos(outAngle) * len + Math.sin(tTime * 2) * tendril.curl;
-    const endY = startY + Math.sin(outAngle) * len + Math.cos(tTime * 2) * tendril.curl;
+    const endX = startX + outDir.x * len + outDir.y * (Math.sin(tTime * 2) * tendril.curl);
+    const endY = startY + outDir.y * len - outDir.x * (Math.sin(tTime * 2) * tendril.curl);
 
-    // Gradient fade outward
     const grad = ctx.createLinearGradient(startX, startY, endX, endY);
-    grad.addColorStop(0, `${theme.tendril}${0.8 * Math.min(glowIntensity, 1.5)})`);
-    grad.addColorStop(0.5, `${theme.tendril}${0.4 * Math.min(glowIntensity, 1.5)})`);
+    grad.addColorStop(0, `${theme.tendril}${0.85 * Math.min(glowIntensity, 1.5)})`);
+    grad.addColorStop(0.5, `${theme.tendril}${0.45 * Math.min(glowIntensity, 1.5)})`);
     grad.addColorStop(1, `${theme.tendril}0)`);
 
     ctx.beginPath();
@@ -398,41 +474,29 @@ class ManaOverlayApp {
     ctx.lineWidth = tendril.width * (0.8 + 0.3 * Math.sin(tTime * 2));
     ctx.lineCap = 'round';
     ctx.shadowColor = theme.primary;
-    ctx.shadowBlur = 18;
+    ctx.shadowBlur = 20;
     ctx.stroke();
   }
 
-  /**
-   * Exact Toploader Outer Path (Rounded bottom corners, clean top insertion lip)
-   */
   drawToploaderPath(ctx, x, y, width, height, radius) {
     const bottomRadius = Math.max(4, Math.min(radius, width / 4));
-    const topRadius = 6; // Slight top outer rounding
+    const topRadius = 6;
 
     ctx.beginPath();
-    // Top Left corner
     ctx.moveTo(x + topRadius, y);
-    // Top Edge (Insertion lip opening)
     ctx.lineTo(x + width - topRadius, y);
-    // Top Right corner
     ctx.quadraticCurveTo(x + width, y, x + width, y + topRadius);
-    // Right Edge
     ctx.lineTo(x + width, y + height - bottomRadius);
-    // Bottom Right Rounded Corner
     ctx.quadraticCurveTo(x + width, y + height, x + width - bottomRadius, y + height);
-    // Bottom Edge
     ctx.lineTo(x + bottomRadius, y + height);
-    // Bottom Left Rounded Corner
     ctx.quadraticCurveTo(x, y + height, x, y + height - bottomRadius);
-    // Left Edge
     ctx.lineTo(x, y + topRadius);
-    // Top Left Corner
     ctx.quadraticCurveTo(x, y, x + topRadius, y);
     ctx.closePath();
   }
 
   /**
-   * Touch Gesture Engine (1-finger drag, 2-finger pinch zoom ONLY)
+   * Touch Gesture Engine
    */
   setupGestureEngine() {
     const canvas = this.canvas;
@@ -641,12 +705,12 @@ class ManaOverlayApp {
       this.state.rotation = 0;
       this.state.cornerRadius = 18;
       this.state.borderThickness = 36;
-      this.state.glowIntensity = 2.0;
+      this.state.glowIntensity = 2.2;
       this.state.turbulence = 1.2;
       this.state.theme = 0;
 
-      document.getElementById('slider-glow').value = 2.0;
-      document.getElementById('val-glow').textContent = '2.0x';
+      document.getElementById('slider-glow').value = 2.2;
+      document.getElementById('val-glow').textContent = '2.2x';
       document.getElementById('slider-thickness').value = 36;
       document.getElementById('val-thickness').textContent = '36px';
       document.getElementById('slider-speed').value = 1.2;
@@ -735,6 +799,6 @@ class ManaOverlayApp {
 window.addEventListener('DOMContentLoaded', () => {
   const app = new ManaOverlayApp();
   app.init().catch((err) => {
-    console.error('Failed to initialize Toploader Mana Overlay App:', err);
+    console.error('Failed to initialize Cosmic Space Dust Overlay:', err);
   });
 });
