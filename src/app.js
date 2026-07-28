@@ -1,12 +1,13 @@
 /**
- * High-End TCG Toploader Overlay - Viscous Liquid Mana Engine
- * Simulates thick, glowing, viscous liquid mana (no glitter stars)
+ * High-End TCG Toploader Overlay - Fluid Liquid Water Engine
+ * Real-time animated liquid caustics, fluid wave ripples, and water reflections.
  */
 
 class ManaOverlayApp {
   constructor() {
     this.canvas = null;
     this.ctx = null;
+    this.animFrameId = null;
 
     // Frame State
     this.state = {
@@ -19,8 +20,8 @@ class ManaOverlayApp {
       cornerRadius: 18,
       borderThickness: 38,
       glowIntensity: 2.2,
-      turbulence: 1.0,
-      theme: 0, // 0: Blue Mana, 1: Red Fire, 2: Emerald Green, 3: Nether Void, 4: Holy Sun
+      turbulence: 1.2,
+      theme: 0, // 0: Blue Water, 1: Red Lava, 2: Emerald Poison, 3: Nether Fluid, 4: Holy Sun
       isLocked: false,
       isHudCollapsed: false,
       preset: 'toploader'
@@ -34,52 +35,52 @@ class ManaOverlayApp {
       oversized: { width: 370, height: 520, name: 'Oversized (Commander)' }
     };
 
-    // Viscous Liquid Theme Color Palettes
+    // Fluid Water Color Palettes
     this.themes = [
-      { // 0: Viscous Blue Mana Potion Fluid
-        primary: '#00e5ff',
-        secondary: '#0055ff',
-        dark: '#001845',
-        deep: '#000a20',
+      { // 0: Pure Liquid Blue Water / Arcane Mana
+        primary: '#00f0ff',
+        secondary: '#0066ff',
+        dark: '#001a40',
+        deep: '#000c20',
         core: '#ffffff',
-        liquidRibbon: 'rgba(0, 229, 255, ',
-        liquidBlob: '#00c8ff'
+        waterHighlight: 'rgba(180, 245, 255, ',
+        waterGlow: 'rgba(0, 225, 255, '
       },
-      { // 1: Viscous Molten Dragon Lava
+      { // 1: Molten Lava Fluid
         primary: '#ff4400',
         secondary: '#ff9900',
-        dark: '#4a0000',
+        dark: '#400500',
         deep: '#200000',
         core: '#fff8ee',
-        liquidRibbon: 'rgba(255, 68, 0, ',
-        liquidBlob: '#ff7700'
+        waterHighlight: 'rgba(255, 220, 180, ',
+        waterGlow: 'rgba(255, 88, 0, '
       },
-      { // 2: Viscous Emerald Poison / Life Nectar
-        primary: '#00ff88',
+      { // 2: Emerald Life Water
+        primary: '#00ffaa',
         secondary: '#00aa44',
-        dark: '#003311',
-        deep: '#001a08',
+        dark: '#003015',
+        deep: '#00150a',
         core: '#f0fff8',
-        liquidRibbon: 'rgba(0, 255, 136, ',
-        liquidBlob: '#00dd66'
+        waterHighlight: 'rgba(200, 255, 230, ',
+        waterGlow: 'rgba(0, 255, 170, '
       },
-      { // 3: Viscous Nether Void Fluid
+      { // 3: Nether Void Fluid
         primary: '#d000ff',
         secondary: '#6600ff',
-        dark: '#200040',
+        dark: '#250045',
         deep: '#100020',
         core: '#f9f0ff',
-        liquidRibbon: 'rgba(208, 0, 255, ',
-        liquidBlob: '#b800ff'
+        waterHighlight: 'rgba(240, 200, 255, ',
+        waterGlow: 'rgba(208, 0, 255, '
       },
-      { // 4: Viscous Solar Gold Liquid
+      { // 4: Solar Gold Liquid
         primary: '#ffcc00',
         secondary: '#ff8800',
-        dark: '#4a2800',
+        dark: '#452500',
         deep: '#201000',
         core: '#ffffff',
-        liquidRibbon: 'rgba(255, 204, 0, ',
-        liquidBlob: '#ffbb00'
+        waterHighlight: 'rgba(255, 245, 200, ',
+        waterGlow: 'rgba(255, 204, 0, '
       }
     ];
 
@@ -98,39 +99,38 @@ class ManaOverlayApp {
       fps: 60
     };
 
-    // Viscous Liquid Streams & Floating Liquid Blobs (NO STARS / NO GLITTER)
-    this.liquidStreams = [];
-    this.liquidBlobs = [];
-    this.initViscousLiquidEngine();
+    // Fluid Water Wave Ribbons & Splash Blobs
+    this.waterWaves = [];
+    this.waterSplashBlobs = [];
+    this.initFluidWaterEngine();
   }
 
-  initViscousLiquidEngine() {
-    // 1. Heavy Liquid Streams (Undulating thick fluid ribbons around the frame)
-    this.liquidStreams = [];
-    for (let i = 0; i < 14; i++) {
-      this.liquidStreams.push({
+  initFluidWaterEngine() {
+    // Animated fluid water wave streams along the border
+    this.waterWaves = [];
+    for (let i = 0; i < 16; i++) {
+      this.waterWaves.push({
         side: i % 4,
-        posRatio: (i / 14 + Math.random() * 0.08) % 1.0,
-        length: 50 + Math.random() * 80,
-        thickness: 18 + Math.random() * 28,
-        speed: 0.6 + Math.random() * 0.8,
+        posRatio: (i / 16 + Math.random() * 0.05) % 1.0,
+        length: 60 + Math.random() * 90,
+        thickness: 16 + Math.random() * 24,
+        speed: 0.8 + Math.random() * 1.0,
         phase: Math.random() * Math.PI * 2,
-        viscosity: 25 + Math.random() * 35
+        amplitude: 20 + Math.random() * 30
       });
     }
 
-    // 2. Viscous Liquid Blobs / Droplets oozing smoothly along edges
-    this.liquidBlobs = [];
-    for (let i = 0; i < 30; i++) {
-      this.liquidBlobs.push({
+    // Liquid water droplets / splash bubbles oozing outward
+    this.waterSplashBlobs = [];
+    for (let i = 0; i < 36; i++) {
+      this.waterSplashBlobs.push({
         side: Math.floor(Math.random() * 4),
         posRatio: Math.random(),
-        dist: Math.random() * 40,
-        rx: 12 + Math.random() * 22,
-        ry: 8 + Math.random() * 16,
-        speed: 0.3 + Math.random() * 0.6,
-        phase: Math.random() * Math.PI * 2,
-        wobbleFreq: 1.5 + Math.random() * 2
+        dist: Math.random() * 45,
+        rx: 10 + Math.random() * 20,
+        ry: 7 + Math.random() * 14,
+        speed: 0.4 + Math.random() * 0.8,
+        phase: Math.random() * Math.PI * 2
       });
     }
   }
@@ -149,10 +149,27 @@ class ManaOverlayApp {
     this.setupGestureEngine();
     this.setupUIBindings();
 
-    requestAnimationFrame((t) => this.renderLoop(t));
+    // Start robust animation loop
+    this.startLoop();
 
     this.updateVisualGuide();
-    console.log('⚡ Viscous Liquid Mana Engine Initialized!');
+    console.log('⚡ Fluid Liquid Water Engine Initialized!');
+  }
+
+  startLoop() {
+    if (this.animFrameId) cancelAnimationFrame(this.animFrameId);
+
+    const loop = () => {
+      try {
+        const timeSec = performance.now() * 0.001;
+        this.renderFrame(timeSec);
+      } catch (err) {
+        console.error('Render Loop Error:', err);
+      }
+      this.animFrameId = requestAnimationFrame(loop);
+    };
+
+    this.animFrameId = requestAnimationFrame(loop);
   }
 
   handleResize() {
@@ -171,11 +188,10 @@ class ManaOverlayApp {
     this.updateVisualGuide();
   }
 
-  renderLoop(timeMs) {
+  renderFrame(timeSec) {
     const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
     const width = window.innerWidth;
     const height = window.innerHeight;
-    const timeSec = timeMs * 0.001;
 
     const ctx = this.ctx;
     if (!ctx) return;
@@ -186,8 +202,8 @@ class ManaOverlayApp {
     ctx.fillStyle = '#030305';
     ctx.fillRect(0, 0, width, height);
 
-    // Render Viscous Liquid Mana Toploader
-    this.renderViscousManaToploader(ctx, timeSec);
+    // Render Animated Fluid Water Toploader
+    this.renderFluidWaterToploader(ctx, timeSec);
 
     // FPS Meter Update
     this.fpsCounter.frames++;
@@ -203,14 +219,12 @@ class ManaOverlayApp {
         fpsEl.style.color = this.fpsCounter.fps >= 55 ? '#00e5ff' : this.fpsCounter.fps >= 30 ? '#ffb700' : '#ff4444';
       }
     }
-
-    requestAnimationFrame((t) => this.renderLoop(t));
   }
 
   /**
-   * Main Render Pipeline: Viscous Liquid Fluid Engine
+   * Main Render Pipeline: Fluid Liquid Water & Specular Caustics Engine
    */
-  renderViscousManaToploader(ctx, time) {
+  renderFluidWaterToploader(ctx, time) {
     const { centerX, centerY, width: baseW, height: baseH, scale, rotation, cornerRadius: baseR, borderThickness: baseThickness, glowIntensity, turbulence, theme: themeIdx } = this.state;
 
     const theme = this.themes[themeIdx] || this.themes[0];
@@ -225,43 +239,44 @@ class ManaOverlayApp {
     ctx.rotate(rotation);
 
     // -------------------------------------------------------------
-    // 1. HEAVY LIQUID STREAM RIBBONS (Thick fluid oozing outward)
+    // 1. FLUID WATER WAVE RIBBONS (Wafting liquid streams flowing outward)
     // -------------------------------------------------------------
     ctx.save();
-    for (const stream of this.liquidStreams) {
-      this.drawViscousFluidStream(ctx, stream, w, h, r, thickness, time, turbulence, glowIntensity, theme);
+    for (const wave of this.waterWaves) {
+      this.drawFluidWaterRibbon(ctx, wave, w, h, r, thickness, time, turbulence, glowIntensity, theme);
     }
     ctx.restore();
 
     // -------------------------------------------------------------
-    // 2. VISCOUS LIQUID BLOBS & DROPLETS (Fluid surface tension oozing)
+    // 2. LIQUID WATER DROPLETS & SPLASH BLOBS (Surface tension oozing)
     // -------------------------------------------------------------
     ctx.save();
-    for (const blob of this.liquidBlobs) {
-      blob.posRatio = (blob.posRatio + blob.speed * 0.003 * turbulence) % 1.0;
+    for (const blob of this.waterSplashBlobs) {
+      blob.posRatio = (blob.posRatio + blob.speed * 0.004 * turbulence) % 1.0;
       const pt = this.getEdgePos(blob.side, blob.posRatio, w, h);
       const outDir = this.getOutVector(blob.side);
 
-      const wobble = Math.sin(time * blob.wobbleFreq + blob.phase) * 6;
+      const wobble = Math.sin(time * 2.5 + blob.phase) * 8;
       const bx = pt.x + outDir.x * (blob.dist + wobble);
       const by = pt.y + outDir.y * (blob.dist + wobble);
 
-      const radiusX = blob.rx * (0.9 + 0.2 * Math.sin(time * 2 + blob.phase));
-      const radiusY = blob.ry * (0.9 + 0.2 * Math.cos(time * 2 + blob.phase));
+      const rx = blob.rx * (0.85 + 0.3 * Math.sin(time * 3 + blob.phase));
+      const ry = blob.ry * (0.85 + 0.3 * Math.cos(time * 3 + blob.phase));
 
-      const blobGrad = ctx.createRadialGradient(bx, by, 0, bx, by, Math.max(radiusX, radiusY));
+      const gradR = Math.max(1, Math.max(rx, ry));
+      const blobGrad = ctx.createRadialGradient(bx, by, 0, bx, by, gradR);
       blobGrad.addColorStop(0, theme.core);
-      blobGrad.addColorStop(0.4, theme.primary);
-      blobGrad.addColorStop(0.85, theme.secondary);
+      blobGrad.addColorStop(0.35, theme.primary);
+      blobGrad.addColorStop(0.8, theme.secondary);
       blobGrad.addColorStop(1, `${theme.secondary}0`);
 
       ctx.fillStyle = blobGrad;
       ctx.shadowColor = theme.primary;
-      ctx.shadowBlur = 18 * glowIntensity;
-      ctx.globalAlpha = 0.85 * Math.min(glowIntensity, 1.4);
+      ctx.shadowBlur = 16 * glowIntensity;
+      ctx.globalAlpha = 0.8 * Math.min(glowIntensity, 1.4);
 
       ctx.beginPath();
-      ctx.ellipse(bx, by, radiusX, radiusY, time + blob.phase, 0, Math.PI * 2);
+      ctx.ellipse(bx, by, rx, ry, time + blob.phase, 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.restore();
@@ -270,10 +285,10 @@ class ManaOverlayApp {
     // 3. TOPLOADER BASE FRAME (Deep Fluid Sapphire Foundation)
     // -------------------------------------------------------------
     const glowPasses = [
-      { blur: 50 * glowIntensity, alpha: 0.3 * glowIntensity, color: theme.secondary },
-      { blur: 28 * glowIntensity, alpha: 0.55 * glowIntensity, color: theme.primary },
-      { blur: 12 * glowIntensity, alpha: 0.85 * glowIntensity, color: theme.primary },
-      { blur: 3  * glowIntensity, alpha: 1.0  * glowIntensity, color: theme.core }
+      { blur: 54 * glowIntensity, alpha: 0.28 * glowIntensity, color: theme.secondary },
+      { blur: 30 * glowIntensity, alpha: 0.55 * glowIntensity, color: theme.primary },
+      { blur: 14 * glowIntensity, alpha: 0.85 * glowIntensity, color: theme.primary },
+      { blur: 4  * glowIntensity, alpha: 1.0  * glowIntensity, color: theme.core }
     ];
 
     for (const pass of glowPasses) {
@@ -292,19 +307,19 @@ class ManaOverlayApp {
     }
 
     // -------------------------------------------------------------
-    // 4. ANIMATED VISCOUS LIQUID SURFACE WAVE ALONG BORDER
+    // 4. ANIMATED LIQUID WATER CAUSTICS & UNDULATING WAVES
     // -------------------------------------------------------------
     ctx.save();
-    const waveCount = 3;
-    for (let i = 0; i < waveCount; i++) {
-      const wavePhase = time * (0.8 + i * 0.3) * turbulence;
-      const waveAlpha = (0.5 + 0.3 * Math.sin(wavePhase)) * Math.min(glowIntensity, 1.5);
+    const waveLayers = 4;
+    for (let i = 0; i < waveLayers; i++) {
+      const waveSpeed = time * (1.0 + i * 0.4) * turbulence;
+      const waveAlpha = (0.5 + 0.35 * Math.sin(waveSpeed)) * Math.min(glowIntensity, 1.5);
 
       ctx.strokeStyle = i % 2 === 0 ? theme.primary : theme.secondary;
-      ctx.lineWidth = thickness * (0.7 + 0.25 * Math.cos(wavePhase));
+      ctx.lineWidth = thickness * (0.65 + 0.25 * Math.cos(waveSpeed));
       ctx.globalAlpha = waveAlpha;
       ctx.shadowColor = theme.primary;
-      ctx.shadowBlur = 16;
+      ctx.shadowBlur = 18;
 
       this.drawToploaderPath(ctx, -w / 2, -h / 2, w, h, r);
       ctx.stroke();
@@ -312,19 +327,19 @@ class ManaOverlayApp {
     ctx.restore();
 
     // -------------------------------------------------------------
-    // 5. TOPLOADER DETAIL HIGHLIGHTS (Insertion Lip & Inner Channel)
+    // 5. WATER SPECULAR REFLECTION & TOP INSERTION LIP HIGHLIGHT
     // -------------------------------------------------------------
     ctx.save();
-    // Inner channel line
+    // Inner water channel
     ctx.strokeStyle = theme.primary;
     ctx.lineWidth = 4;
     ctx.globalAlpha = 0.95 * Math.min(glowIntensity, 1.3);
     ctx.shadowColor = theme.primary;
-    ctx.shadowBlur = 12;
+    ctx.shadowBlur = 14;
     this.drawToploaderPath(ctx, -w / 2 + thickness / 2, -h / 2 + thickness / 2, w - thickness, h - thickness, Math.max(4, r - thickness / 2));
     ctx.stroke();
 
-    // Top Insertion Lip Specular Highlight
+    // Top Insertion Lip Specular Water Line
     ctx.beginPath();
     ctx.moveTo(-w / 2 + 8, -h / 2 + 10);
     ctx.lineTo(w / 2 - 8, -h / 2 + 10);
@@ -332,7 +347,7 @@ class ManaOverlayApp {
     ctx.lineWidth = 4;
     ctx.globalAlpha = 1.0;
     ctx.shadowColor = theme.primary;
-    ctx.shadowBlur = 16;
+    ctx.shadowBlur = 18;
     ctx.stroke();
     ctx.restore();
 
@@ -349,42 +364,45 @@ class ManaOverlayApp {
   }
 
   /**
-   * Draws a thick, viscous liquid stream undulating away from the border
+   * Draws a fluid water wave ribbon wafting outward with coordinate safeguards
    */
-  drawViscousFluidStream(ctx, stream, w, h, r, thickness, time, turbulence, glowIntensity, theme) {
-    const pt = this.getEdgePos(stream.side, stream.posRatio, w, h);
-    const outDir = this.getOutVector(stream.side);
+  drawFluidWaterRibbon(ctx, wave, w, h, r, thickness, time, turbulence, glowIntensity, theme) {
+    const pt = this.getEdgePos(wave.side, wave.posRatio, w, h);
+    const outDir = this.getOutVector(wave.side);
 
     const startX = pt.x;
     const startY = pt.y;
 
-    const sTime = time * stream.speed * turbulence + stream.phase;
-    const len = stream.length * (0.85 + 0.3 * Math.sin(sTime));
+    const wTime = time * wave.speed * turbulence + wave.phase;
+    const len = wave.length * (0.8 + 0.4 * Math.sin(wTime));
 
-    const cp1x = startX + outDir.x * (len * 0.4) + outDir.y * (Math.sin(sTime) * stream.viscosity);
-    const cp1y = startY + outDir.y * (len * 0.4) - outDir.x * (Math.sin(sTime) * stream.viscosity);
+    const cp1x = startX + outDir.x * (len * 0.4) + outDir.y * (Math.sin(wTime) * wave.amplitude);
+    const cp1y = startY + outDir.y * (len * 0.4) - outDir.x * (Math.sin(wTime) * wave.amplitude);
 
-    const cp2x = startX + outDir.x * (len * 0.8) + outDir.y * (Math.cos(sTime * 1.3) * stream.viscosity * 1.2);
-    const cp2y = startY + outDir.y * (len * 0.8) - outDir.x * (Math.cos(sTime * 1.3) * stream.viscosity * 1.2);
+    const cp2x = startX + outDir.x * (len * 0.8) + outDir.y * (Math.cos(wTime * 1.4) * wave.amplitude * 1.3);
+    const cp2y = startY + outDir.y * (len * 0.8) - outDir.x * (Math.cos(wTime * 1.4) * wave.amplitude * 1.3);
 
-    const endX = startX + outDir.x * len + outDir.y * (Math.sin(sTime * 1.8) * stream.viscosity);
-    const endY = startY + outDir.y * len - outDir.x * (Math.sin(sTime * 1.8) * stream.viscosity);
+    const endX = startX + outDir.x * len + outDir.y * (Math.sin(wTime * 1.9) * wave.amplitude);
+    const endY = startY + outDir.y * len - outDir.x * (Math.sin(wTime * 1.9) * wave.amplitude);
 
-    // Thick liquid gradient fade
+    // Safeguard gradient coordinates
+    const dist = Math.hypot(endX - startX, endY - startY);
+    if (dist < 1.0) return;
+
     const grad = ctx.createLinearGradient(startX, startY, endX, endY);
-    grad.addColorStop(0, `${theme.liquidRibbon}${0.9 * Math.min(glowIntensity, 1.5)})`);
-    grad.addColorStop(0.5, `${theme.liquidRibbon}${0.5 * Math.min(glowIntensity, 1.5)})`);
-    grad.addColorStop(1, `${theme.liquidRibbon}0)`);
+    grad.addColorStop(0, `${theme.waterGlow}${0.85 * Math.min(glowIntensity, 1.5)})`);
+    grad.addColorStop(0.5, `${theme.waterGlow}${0.45 * Math.min(glowIntensity, 1.5)})`);
+    grad.addColorStop(1, `${theme.waterGlow}0)`);
 
     ctx.beginPath();
     ctx.moveTo(startX, startY);
     ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, endX, endY);
 
     ctx.strokeStyle = grad;
-    ctx.lineWidth = stream.thickness * (0.8 + 0.35 * Math.sin(sTime * 1.5));
+    ctx.lineWidth = wave.thickness * (0.8 + 0.35 * Math.sin(wTime * 1.6));
     ctx.lineCap = 'round';
     ctx.shadowColor = theme.primary;
-    ctx.shadowBlur = 22;
+    ctx.shadowBlur = 20;
     ctx.stroke();
   }
 
@@ -630,15 +648,15 @@ class ManaOverlayApp {
       this.state.cornerRadius = 18;
       this.state.borderThickness = 38;
       this.state.glowIntensity = 2.2;
-      this.state.turbulence = 1.0;
+      this.state.turbulence = 1.2;
       this.state.theme = 0;
 
       document.getElementById('slider-glow').value = 2.2;
       document.getElementById('val-glow').textContent = '2.2x';
       document.getElementById('slider-thickness').value = 38;
       document.getElementById('val-thickness').textContent = '38px';
-      document.getElementById('slider-speed').value = 1.0;
-      document.getElementById('val-speed').textContent = '1.0x';
+      document.getElementById('slider-speed').value = 1.2;
+      document.getElementById('val-speed').textContent = '1.2x';
       document.getElementById('slider-radius').value = 18;
       document.getElementById('val-radius').textContent = '18px';
 
@@ -723,6 +741,6 @@ class ManaOverlayApp {
 window.addEventListener('DOMContentLoaded', () => {
   const app = new ManaOverlayApp();
   app.init().catch((err) => {
-    console.error('Failed to initialize Viscous Liquid Mana Engine:', err);
+    console.error('Failed to initialize Fluid Water Engine:', err);
   });
 });
