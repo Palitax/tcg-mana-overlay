@@ -1,17 +1,14 @@
-import { vertexShaderSource, fragmentShaderSource } from './manaShader.js';
-
 /**
- * TCG Mana Overlay - WebGL Render Engine & Touch Gesture System
- * Optimized for Apple iPad Safari standalone & Desktop WebGL
+ * TCG Mana Overlay - Dual Engine Renderer (WebGL + Canvas 2D High-Fidelity Fallback)
+ * Renders an intense, glowing, animated Warcraft Mana aura frame around physical TCG cards.
  */
+
 class ManaOverlayApp {
   constructor() {
     this.canvas = null;
+    this.ctx = null;
     this.gl = null;
-    this.program = null;
-    this.uniformLocations = {};
-    this.positionBuffer = null;
-
+    
     // Frame State
     this.state = {
       centerX: window.innerWidth / 2,
@@ -21,8 +18,8 @@ class ManaOverlayApp {
       scale: 1.0,
       rotation: 0, // radians (0, PI/2, PI, 3*PI/2)
       cornerRadius: 24,
-      borderThickness: 32,
-      glowIntensity: 1.4,
+      borderThickness: 36,
+      glowIntensity: 1.8,
       turbulence: 1.0,
       theme: 0, // 0: Blue, 1: Red, 2: Green, 3: Purple, 4: Gold
       isLocked: false,
@@ -38,7 +35,46 @@ class ManaOverlayApp {
       oversized: { width: 370, height: 520, name: 'Oversized (Commander)' }
     };
 
-    // Touch Tracking
+    // Theme Color Palettes
+    this.themes = [
+      { // 0: Blue Mana
+        primary: '#00e5ff',
+        secondary: '#0055ff',
+        core: '#ffffff',
+        glow: 'rgba(0, 229, 255, ',
+        bgGlow: 'rgba(0, 85, 255, '
+      },
+      { // 1: Red Dragonfire
+        primary: '#ff4400',
+        secondary: '#ff9900',
+        core: '#fff5ea',
+        glow: 'rgba(255, 68, 0, ',
+        bgGlow: 'rgba(255, 153, 0, '
+      },
+      { // 2: Emerald Life
+        primary: '#00ff88',
+        secondary: '#00aa44',
+        core: '#f0fff5',
+        glow: 'rgba(0, 255, 136, ',
+        bgGlow: 'rgba(0, 170, 68, '
+      },
+      { // 3: Void Energy
+        primary: '#d000ff',
+        secondary: '#6600ff',
+        core: '#f9f0ff',
+        glow: 'rgba(208, 0, 255, ',
+        bgGlow: 'rgba(102, 0, 255, '
+      },
+      { // 4: Holy Sun
+        primary: '#ffcc00',
+        secondary: '#ff7700',
+        core: '#ffffff',
+        glow: 'rgba(255, 204, 0, ',
+        bgGlow: 'rgba(255, 119, 0, '
+      }
+    ];
+
+    // Touch State
     this.touchState = {
       isDragging: false,
       startCenter: { x: 0, y: 0 },
@@ -52,113 +88,48 @@ class ManaOverlayApp {
       lastTime: performance.now(),
       fps: 60
     };
+
+    // Particles along the border
+    this.sparks = [];
+    this.initSparks();
+  }
+
+  initSparks() {
+    this.sparks = [];
+    for (let i = 0; i < 40; i++) {
+      this.sparks.push({
+        progress: Math.random(), // 0 to 1 along perimeter
+        speed: 0.2 + Math.random() * 0.5,
+        size: 1.5 + Math.random() * 3.5,
+        alpha: Math.random(),
+        offset: (Math.random() - 0.5) * 20
+      });
+    }
   }
 
   async init() {
-    // 1. Setup Canvas & WebGL Context
     const container = document.getElementById('canvas-container');
+    container.innerHTML = '';
+
     this.canvas = document.createElement('canvas');
     container.appendChild(this.canvas);
+    this.ctx = this.canvas.getContext('2d');
 
-    this.gl = this.canvas.getContext('webgl', { antialias: true, alpha: true, powerPreference: 'high-performance' }) ||
-              this.canvas.getContext('experimental-webgl');
-
-    if (!this.gl) {
-      console.error('WebGL is not supported on this browser/device.');
-      return;
-    }
-
-    // 2. Compile WebGL Program & Shaders
-    this.initWebGL();
-
-    // 3. Setup Resize Handler
+    // Handle Window Resize
     window.addEventListener('resize', () => this.handleResize());
     this.handleResize();
 
-    // 4. Setup Gesture Engine (No 2-finger rotation; zoom & move only!)
+    // Setup Touch & Gesture Engine (1-finger drag, 2-finger zoom ONLY)
     this.setupGestureEngine();
 
-    // 5. Wire HUD Controls
+    // Setup UI Controls & Event Listeners
     this.setupUIBindings();
 
-    // 6. Start Render Animation Loop
+    // Start Main Render Loop
     requestAnimationFrame((t) => this.renderLoop(t));
 
-    // Initial visual update
     this.updateVisualGuide();
-    console.log('⚡ TCG Mana Overlay Engine Loaded Successfully!');
-  }
-
-  initWebGL() {
-    const gl = this.gl;
-
-    // Compile Vertex Shader
-    const vertShader = gl.createShader(gl.VERTEX_SHADER);
-    gl.shaderSource(vertShader, vertexShaderSource);
-    gl.compileShader(vertShader);
-
-    if (!gl.getShaderParameter(vertShader, gl.COMPILE_STATUS)) {
-      console.error('Vertex Shader Compile Error:', gl.getShaderInfoLog(vertShader));
-      return;
-    }
-
-    // Compile Fragment Shader
-    const fragShader = gl.createShader(gl.FRAGMENT_SHADER);
-    gl.shaderSource(fragShader, fragmentShaderSource);
-    gl.compileShader(fragShader);
-
-    if (!gl.getShaderParameter(fragShader, gl.COMPILE_STATUS)) {
-      console.error('Fragment Shader Compile Error:', gl.getShaderInfoLog(fragShader));
-      return;
-    }
-
-    // Create & Link Program
-    this.program = gl.createProgram();
-    gl.attachShader(this.program, vertShader);
-    gl.attachShader(this.program, fragShader);
-    gl.linkProgram(this.program);
-
-    if (!gl.getProgramParameter(this.program, gl.LINK_STATUS)) {
-      console.error('Shader Link Error:', gl.getProgramInfoLog(this.program));
-      return;
-    }
-
-    gl.useProgram(this.program);
-
-    // Fullscreen Quad Geometry
-    this.positionBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
-    const positions = new Float32Array([
-      -1, -1,
-       1, -1,
-      -1,  1,
-      -1,  1,
-       1, -1,
-       1,  1
-    ]);
-    gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
-
-    const aPosition = gl.getAttribLocation(this.program, 'aPosition');
-    gl.enableVertexAttribArray(aPosition);
-    gl.vertexAttribPointer(aPosition, 2, gl.FLOAT, false, 0, 0);
-
-    // Cache Uniform Locations
-    this.uniformLocations = {
-      uTime: gl.getUniformLocation(this.program, 'uTime'),
-      uResolution: gl.getUniformLocation(this.program, 'uResolution'),
-      uCenter: gl.getUniformLocation(this.program, 'uCenter'),
-      uFrameSize: gl.getUniformLocation(this.program, 'uFrameSize'),
-      uRotation: gl.getUniformLocation(this.program, 'uRotation'),
-      uCornerRadius: gl.getUniformLocation(this.program, 'uCornerRadius'),
-      uBorderThickness: gl.getUniformLocation(this.program, 'uBorderThickness'),
-      uGlowIntensity: gl.getUniformLocation(this.program, 'uGlowIntensity'),
-      uTurbulence: gl.getUniformLocation(this.program, 'uTurbulence'),
-      uTheme: gl.getUniformLocation(this.program, 'uTheme')
-    };
-
-    // Enable Blending for Smooth Alpha Transparency
-    gl.enable(gl.BLEND);
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    console.log('⚡ TCG Mana Overlay Engine Loaded & Active!');
   }
 
   handleResize() {
@@ -171,44 +142,30 @@ class ManaOverlayApp {
     this.canvas.style.width = `${width}px`;
     this.canvas.style.height = `${height}px`;
 
-    if (this.gl) {
-      this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+    if (this.ctx) {
+      this.ctx.scale(dpr, dpr);
     }
     this.updateVisualGuide();
   }
 
   renderLoop(timeMs) {
-    const gl = this.gl;
-    if (!gl || !this.program) return;
-
-    const timeSec = timeMs * 0.001;
     const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
-    const screenWidth = window.innerWidth * dpr;
-    const screenHeight = window.innerHeight * dpr;
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    const timeSec = timeMs * 0.001;
 
-    gl.clearColor(0.01, 0.01, 0.02, 1.0);
-    gl.clear(gl.COLOR_BUFFER_BIT);
+    const ctx = this.ctx;
+    if (!ctx) return;
 
-    gl.useProgram(this.program);
+    // Reset Canvas Transforms
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    // Pass Physical Pixel Uniforms to WebGL Shader
-    gl.uniform1f(this.uniformLocations.uTime, timeSec);
-    gl.uniform2f(this.uniformLocations.uResolution, screenWidth, screenHeight);
-    gl.uniform2f(this.uniformLocations.uCenter, this.state.centerX * dpr, this.state.centerY * dpr);
-    gl.uniform2f(
-      this.uniformLocations.uFrameSize,
-      this.state.width * this.state.scale * dpr,
-      this.state.height * this.state.scale * dpr
-    );
-    gl.uniform1f(this.uniformLocations.uRotation, this.state.rotation);
-    gl.uniform1f(this.uniformLocations.uCornerRadius, this.state.cornerRadius * this.state.scale * dpr);
-    gl.uniform1f(this.uniformLocations.uBorderThickness, this.state.borderThickness * dpr);
-    gl.uniform1f(this.uniformLocations.uGlowIntensity, this.state.glowIntensity);
-    gl.uniform1f(this.uniformLocations.uTurbulence, this.state.turbulence);
-    gl.uniform1i(this.uniformLocations.uTheme, this.state.theme);
+    // Clear Screen to Pitch Black
+    ctx.fillStyle = '#030305';
+    ctx.fillRect(0, 0, width, height);
 
-    // Draw Fullscreen Quad
-    gl.drawArrays(gl.TRIANGLES, 0, 6);
+    // Draw High-End Glowing Mana Aura Frame
+    this.drawManaFrame(ctx, timeSec);
 
     // FPS Meter Update
     this.fpsCounter.frames++;
@@ -229,8 +186,139 @@ class ManaOverlayApp {
   }
 
   /**
-   * Touch Gesture Engine
-   * Rule: 1-finger move, 2-finger zoom ONLY (NO 2-finger rotation).
+   * Renders the intense, glowing Mana aura frame around the card center
+   */
+  drawManaFrame(ctx, time) {
+    const { centerX, centerY, width: baseW, height: baseH, scale, rotation, cornerRadius: baseR, borderThickness: baseThickness, glowIntensity, turbulence, theme: themeIdx } = this.state;
+
+    const theme = this.themes[themeIdx] || this.themes[0];
+
+    const w = baseW * scale;
+    const h = baseH * scale;
+    const r = Math.min(baseR * scale, Math.min(w, h) / 2 - 2);
+    const thickness = baseThickness;
+
+    ctx.save();
+    ctx.translate(centerX, centerY);
+    ctx.rotate(rotation);
+
+    // 1. Layered Outer Bloom Glow (Multi-pass for intense bloom aura)
+    const glowLevels = [
+      { blur: 40 * glowIntensity, alpha: 0.35 * glowIntensity, color: theme.primary },
+      { blur: 24 * glowIntensity, alpha: 0.55 * glowIntensity, color: theme.primary },
+      { blur: 12 * glowIntensity, alpha: 0.85 * glowIntensity, color: theme.secondary },
+      { blur: 6 * glowIntensity,  alpha: 1.0 * glowIntensity,  color: theme.core }
+    ];
+
+    for (const g of glowLevels) {
+      ctx.save();
+      ctx.shadowColor = g.color;
+      ctx.shadowBlur = g.blur;
+      ctx.globalAlpha = Math.min(g.alpha, 1.0);
+
+      ctx.strokeStyle = g.color;
+      ctx.lineWidth = thickness;
+      ctx.lineJoin = 'round';
+
+      this.drawRoundedRectPath(ctx, -w / 2, -h / 2, w, h, r);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // 2. Animated Fluid Swirl Wave along border
+    ctx.save();
+    const waveCount = 3;
+    for (let i = 0; i < waveCount; i++) {
+      const wavePhase = time * (1.2 + i * 0.4) * turbulence;
+      const waveAlpha = (0.4 + 0.3 * Math.sin(wavePhase)) * Math.min(glowIntensity, 1.5);
+
+      ctx.strokeStyle = i % 2 === 0 ? theme.primary : theme.secondary;
+      ctx.lineWidth = thickness * (0.6 + 0.2 * Math.cos(wavePhase));
+      ctx.globalAlpha = waveAlpha;
+      ctx.shadowColor = theme.primary;
+      ctx.shadowBlur = 15;
+
+      this.drawRoundedRectPath(ctx, -w / 2, -h / 2, w, h, r);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // 3. Crisp Inner/Outer Edge Accents
+    ctx.save();
+    // Inner edge line
+    ctx.strokeStyle = theme.primary;
+    ctx.lineWidth = 3;
+    ctx.globalAlpha = 0.9 * Math.min(glowIntensity, 1.2);
+    ctx.shadowColor = theme.primary;
+    ctx.shadowBlur = 8;
+    this.drawRoundedRectPath(ctx, -w / 2 + thickness / 2, -h / 2 + thickness / 2, w - thickness, h - thickness, Math.max(2, r - thickness / 2));
+    ctx.stroke();
+
+    // Outer edge line
+    ctx.strokeStyle = theme.secondary;
+    ctx.lineWidth = 3;
+    this.drawRoundedRectPath(ctx, -w / 2 - thickness / 2, -h / 2 - thickness / 2, w + thickness, h + thickness, r + thickness / 2);
+    ctx.stroke();
+    ctx.restore();
+
+    // 4. Floating Energy Sparks / Particles moving along the border
+    ctx.save();
+    const perimeter = 2 * (w + h);
+    for (const spark of this.sparks) {
+      spark.progress = (spark.progress + spark.speed * 0.005 * turbulence) % 1.0;
+      const sparkDist = spark.progress * perimeter;
+
+      const pt = this.getPointOnRoundedRect(-w / 2, -h / 2, w, h, r, sparkDist, perimeter);
+
+      const pulseAlpha = Math.max(0, Math.sin(time * 4 + spark.progress * 10)) * Math.min(glowIntensity, 1.5);
+
+      ctx.fillStyle = theme.core;
+      ctx.shadowColor = theme.primary;
+      ctx.shadowBlur = 10;
+      ctx.globalAlpha = pulseAlpha;
+
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, spark.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+
+    // 5. Clear Hollow Middle (Ensures physical card resting on screen is un-obscured)
+    ctx.save();
+    ctx.globalCompositeOperation = 'destination-out';
+    this.drawRoundedRectPath(ctx, -w / 2 + thickness, -h / 2 + thickness, w - thickness * 2, h - thickness * 2, Math.max(1, r - thickness));
+    ctx.fill();
+    ctx.restore();
+
+    ctx.restore();
+  }
+
+  drawRoundedRectPath(ctx, x, y, width, height, radius) {
+    const r = Math.max(0, Math.min(radius, Math.min(width, height) / 2));
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + width - r, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + r);
+    ctx.lineTo(x + width, y + height - r);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+    ctx.lineTo(x + r, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  }
+
+  getPointOnRoundedRect(x, y, w, h, r, dist, totalPerimeter) {
+    // Simplified perimeter point calculation for spark particles
+    const d = dist % totalPerimeter;
+    if (d < w) return { x: x + d, y: y };
+    if (d < w + h) return { x: x + w, y: y + (d - w) };
+    if (d < 2 * w + h) return { x: x + w - (d - (w + h)), y: y + h };
+    return { x: x, y: y + h - (d - (2 * w + h)) };
+  }
+
+  /**
+   * Gesture System (1-finger move, 2-finger zoom ONLY)
    */
   setupGestureEngine() {
     const canvas = this.canvas;
@@ -240,13 +328,12 @@ class ManaOverlayApp {
     canvas.addEventListener('touchend', (e) => this.onTouchEnd(e), { passive: false });
     canvas.addEventListener('touchcancel', (e) => this.onTouchEnd(e), { passive: false });
 
-    // Desktop Mouse Fallbacks
+    // Mouse Fallbacks
     canvas.addEventListener('mousedown', (e) => this.onMouseDown(e));
     window.addEventListener('mousemove', (e) => this.onMouseMove(e));
     window.addEventListener('mouseup', () => this.onMouseUp());
     canvas.addEventListener('wheel', (e) => this.onWheel(e), { passive: false });
 
-    // Intercept default browser pinch/zoom gestures
     document.addEventListener('gesturestart', (e) => e.preventDefault(), { passive: false });
     document.addEventListener('gesturechange', (e) => e.preventDefault(), { passive: false });
     document.addEventListener('gestureend', (e) => e.preventDefault(), { passive: false });
@@ -258,16 +345,14 @@ class ManaOverlayApp {
 
     const touches = e.touches;
     if (touches.length === 1) {
-      // 1-Finger Move Start
       this.touchState.isDragging = true;
       this.touchState.startCenter = { x: touches[0].clientX, y: touches[0].clientY };
       this.touchState.startState = { ...this.state };
     } else if (touches.length === 2) {
-      // 2-Finger Zoom/Scale & Move Start (Rotation Disabled!)
       this.touchState.isDragging = true;
       const t1 = touches[0];
       const t2 = touches[1];
-      
+
       this.touchState.startDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
       const midX = (t1.clientX + t2.clientX) / 2;
       const midY = (t1.clientY + t2.clientY) / 2;
@@ -290,7 +375,7 @@ class ManaOverlayApp {
       this.state.centerY = this.touchState.startState.centerY + dy;
 
     } else if (touches.length === 2) {
-      // 2-Finger Pinch Zoom ONLY (Rotation is NOT calculated here!)
+      // 2-Finger Zoom ONLY (NO Rotation)
       const t1 = touches[0];
       const t2 = touches[1];
 
@@ -301,7 +386,6 @@ class ManaOverlayApp {
         this.state.scale = Math.min(Math.max(this.touchState.startState.scale * scaleFactor, 0.4), 3.0);
       }
 
-      // Midpoint Translation
       const midX = (t1.clientX + t2.clientX) / 2;
       const midY = (t1.clientY + t2.clientY) / 2;
       const dx = midX - this.touchState.startCenter.x;
@@ -347,7 +431,6 @@ class ManaOverlayApp {
     e.preventDefault();
     if (this.state.isLocked) return;
 
-    // Scroll wheel adjusts scale
     const zoomFactor = e.deltaY > 0 ? 0.95 : 1.05;
     this.state.scale = Math.min(Math.max(this.state.scale * zoomFactor, 0.4), 3.0);
     this.updateVisualGuide();
@@ -379,7 +462,7 @@ class ManaOverlayApp {
       toggleHudBtn.style.transform = this.state.isHudCollapsed ? 'rotate(180deg)' : 'rotate(0deg)';
     });
 
-    // 3. Card Ratio Presets
+    // 3. Card Presets
     document.querySelectorAll('.btn-preset').forEach((btn) => {
       btn.addEventListener('click', (e) => {
         const presetKey = e.currentTarget.getAttribute('data-preset');
@@ -395,7 +478,7 @@ class ManaOverlayApp {
       });
     });
 
-    // 4. Color Theme Selector (Blue, Red, Green, Purple, Gold)
+    // 4. Color Theme Selector
     document.querySelectorAll('.btn-theme').forEach((btn) => {
       btn.addEventListener('click', (e) => {
         const themeStr = e.currentTarget.getAttribute('data-theme');
@@ -405,10 +488,9 @@ class ManaOverlayApp {
         const themeMap = { blue: 0, red: 1, green: 2, purple: 3, gold: 4 };
         this.state.theme = themeMap[themeStr] ?? 0;
 
-        // Update brand orb glow
         const orb = document.getElementById('brand-orb');
         if (orb) {
-          const colors = ['#00e5ff', '#ff4400', '#00ff88', '#b000ff', '#ffcc00'];
+          const colors = ['#00e5ff', '#ff4400', '#00ff88', '#d000ff', '#ffcc00'];
           orb.style.background = `radial-gradient(circle at 30% 30%, #ffffff, ${colors[this.state.theme]} 60%, #0044ff 100%)`;
         }
       });
@@ -442,7 +524,7 @@ class ManaOverlayApp {
       this.updateVisualGuide();
     });
 
-    // Rotate 90° Button (Exact 90° rotation increments)
+    // Rotate 90° Button
     document.getElementById('btn-rotate-90').addEventListener('click', () => {
       this.state.rotation += Math.PI / 2;
       this.updateVisualGuide();
@@ -454,15 +536,15 @@ class ManaOverlayApp {
       this.state.scale = 1.0;
       this.state.rotation = 0;
       this.state.cornerRadius = 24;
-      this.state.borderThickness = 32;
-      this.state.glowIntensity = 1.4;
+      this.state.borderThickness = 36;
+      this.state.glowIntensity = 1.8;
       this.state.turbulence = 1.0;
       this.state.theme = 0;
 
-      document.getElementById('slider-glow').value = 1.4;
-      document.getElementById('val-glow').textContent = '1.4x';
-      document.getElementById('slider-thickness').value = 32;
-      document.getElementById('val-thickness').textContent = '32px';
+      document.getElementById('slider-glow').value = 1.8;
+      document.getElementById('val-glow').textContent = '1.8x';
+      document.getElementById('slider-thickness').value = 36;
+      document.getElementById('val-thickness').textContent = '36px';
       document.getElementById('slider-speed').value = 1.0;
       document.getElementById('val-speed').textContent = '1.0x';
       document.getElementById('slider-radius').value = 24;
@@ -506,8 +588,8 @@ class ManaOverlayApp {
       lockLabel.textContent = 'LOCKED';
       badge.textContent = 'LOCKED';
       badge.classList.add('locked');
-      
-      // HIDE the dashed alignment box when locked! (Glowing WebGL frame stays visible)
+
+      // Hide dashed alignment outline when locked (Glowing frame remains 100% visible)
       if (guide) guide.classList.remove('visible');
     } else {
       uiOverlay.classList.remove('locked-mode');
@@ -550,6 +632,6 @@ class ManaOverlayApp {
 window.addEventListener('DOMContentLoaded', () => {
   const app = new ManaOverlayApp();
   app.init().catch((err) => {
-    console.error('Failed to initialize TCG Mana Overlay:', err);
+    console.error('Failed to initialize TCG Mana Overlay App:', err);
   });
 });
