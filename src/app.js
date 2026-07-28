@@ -2,7 +2,7 @@ import { vertexShaderSource, fragmentShaderSource } from './manaShader.js';
 
 /**
  * TCG Mana Overlay - WebGL Volumetric Ethereal Mana Smoke Engine
- * Optimized for Apple iPad Safari standalone & Desktop WebGL (60 FPS)
+ * 100% Mobile & Safari WebGL Compliant (60 FPS)
  */
 class ManaOverlayApp {
   constructor() {
@@ -25,7 +25,7 @@ class ManaOverlayApp {
       borderThickness: 36,
       glowIntensity: 1.8,
       turbulence: 1.0,
-      theme: 0, // 0: Ethereal Blue (#AEEFFF / #00A2FF / #6B00FF / #240046)
+      theme: 0, // 0: Ethereal Mana (#AEEFFF / #00A2FF / #6B00FF / #240046)
       isLocked: false,
       isHudCollapsed: false,
       preset: 'toploader'
@@ -38,6 +38,40 @@ class ManaOverlayApp {
       japanese:  { width: 280, height: 408, name: 'Japanese (Yu-Gi-Oh!)' },
       oversized: { width: 370, height: 520, name: 'Oversized (Commander)' }
     };
+
+    // Theme Color Vectors (RGB Normalized)
+    this.themeVectors = [
+      { // 0: Ethereal Mana (Specified: #AEEFFF, #00A2FF, #6B00FF, #240046)
+        core:  [0.682, 0.937, 1.0],
+        inner: [0.0,   0.635, 1.0],
+        outer: [0.419, 0.0,   1.0],
+        deep:  [0.141, 0.0,   0.275]
+      },
+      { // 1: Red Dragonfire
+        core:  [1.0, 0.95, 0.8],
+        inner: [1.0, 0.5,  0.0],
+        outer: [0.8, 0.0,  0.1],
+        deep:  [0.2, 0.0,  0.05]
+      },
+      { // 2: Emerald Life
+        core:  [0.9, 1.0, 0.95],
+        inner: [0.0, 0.9, 0.5],
+        outer: [0.0, 0.5, 0.2],
+        deep:  [0.0, 0.15, 0.08]
+      },
+      { // 3: Nether Void
+        core:  [0.98, 0.9, 1.0],
+        inner: [0.8,  0.1, 1.0],
+        outer: [0.4,  0.0, 0.8],
+        deep:  [0.12, 0.0, 0.25]
+      },
+      { // 4: Holy Sun
+        core:  [1.0,  1.0, 0.9],
+        inner: [1.0,  0.8, 0.1],
+        outer: [0.9,  0.4, 0.0],
+        deep:  [0.25, 0.08, 0.0]
+      }
+    ];
 
     // Touch Tracking
     this.touchState = {
@@ -88,7 +122,7 @@ class ManaOverlayApp {
     this.startLoop();
 
     this.updateVisualGuide();
-    console.log('⚡ Volumetric Ethereal Mana Smoke Shader Loaded Successfully!');
+    console.log('⚡ Volumetric Ethereal Mana Smoke Engine Active!');
   }
 
   initWebGL() {
@@ -104,7 +138,7 @@ class ManaOverlayApp {
       return;
     }
 
-    // Fragment Shader (Domain-Warped FBM Mana Smoke)
+    // Fragment Shader
     const fragShader = gl.createShader(gl.FRAGMENT_SHADER);
     gl.shaderSource(fragShader, fragmentShaderSource);
     gl.compileShader(fragShader);
@@ -114,7 +148,7 @@ class ManaOverlayApp {
       return;
     }
 
-    // Program Link
+    // Link Program
     this.program = gl.createProgram();
     gl.attachShader(this.program, vertShader);
     gl.attachShader(this.program, fragShader);
@@ -127,7 +161,7 @@ class ManaOverlayApp {
 
     gl.useProgram(this.program);
 
-    // Fullscreen Quad Geometry
+    // Fullscreen Quad Geometry Buffer
     this.positionBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
     const positions = new Float32Array([
@@ -140,11 +174,7 @@ class ManaOverlayApp {
     ]);
     gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
 
-    const aPosition = gl.getAttribLocation(this.program, 'aPosition');
-    gl.enableVertexAttribArray(aPosition);
-    gl.vertexAttribPointer(aPosition, 2, gl.FLOAT, false, 0, 0);
-
-    // Uniform Locations
+    // Cache Uniform Locations
     this.uniformLocations = {
       uTime: gl.getUniformLocation(this.program, 'uTime'),
       uResolution: gl.getUniformLocation(this.program, 'uResolution'),
@@ -155,7 +185,10 @@ class ManaOverlayApp {
       uBorderThickness: gl.getUniformLocation(this.program, 'uBorderThickness'),
       uGlowIntensity: gl.getUniformLocation(this.program, 'uGlowIntensity'),
       uTurbulence: gl.getUniformLocation(this.program, 'uTurbulence'),
-      uTheme: gl.getUniformLocation(this.program, 'uTheme')
+      uColorCore: gl.getUniformLocation(this.program, 'uColorCore'),
+      uColorInner: gl.getUniformLocation(this.program, 'uColorInner'),
+      uColorOuter: gl.getUniformLocation(this.program, 'uColorOuter'),
+      uColorDeep: gl.getUniformLocation(this.program, 'uColorDeep')
     };
 
     // Enable Alpha Blending
@@ -187,7 +220,7 @@ class ManaOverlayApp {
         const timeSec = performance.now() * 0.001;
         this.renderFrame(timeSec);
       } catch (err) {
-        console.error('WebGL Render Error:', err);
+        console.error('WebGL Render Loop Exception:', err);
       }
       this.animFrameId = requestAnimationFrame(loop);
     };
@@ -208,7 +241,16 @@ class ManaOverlayApp {
 
     gl.useProgram(this.program);
 
-    // Pass Physical Pixel Uniforms to WebGL Shader
+    // Bind Quad Vertex Buffer
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
+    const aPosition = gl.getAttribLocation(this.program, 'aPosition');
+    gl.enableVertexAttribArray(aPosition);
+    gl.vertexAttribPointer(aPosition, 2, gl.FLOAT, false, 0, 0);
+
+    // Get Active Theme Colors
+    const theme = this.themeVectors[this.state.theme] || this.themeVectors[0];
+
+    // Pass Physical Pixel & Color Vector Uniforms to WebGL
     gl.uniform1f(this.uniformLocations.uTime, timeSec);
     gl.uniform2f(this.uniformLocations.uResolution, screenWidth, screenHeight);
     gl.uniform2f(this.uniformLocations.uCenter, this.state.centerX * dpr, this.state.centerY * dpr);
@@ -222,12 +264,17 @@ class ManaOverlayApp {
     gl.uniform1f(this.uniformLocations.uBorderThickness, this.state.borderThickness * dpr);
     gl.uniform1f(this.uniformLocations.uGlowIntensity, this.state.glowIntensity);
     gl.uniform1f(this.uniformLocations.uTurbulence, this.state.turbulence);
-    gl.uniform1i(this.uniformLocations.uTheme, this.state.theme);
 
-    // Draw Fullscreen Quad
+    // Theme Color Vectors
+    gl.uniform3fv(this.uniformLocations.uColorCore, theme.core);
+    gl.uniform3fv(this.uniformLocations.uColorInner, theme.inner);
+    gl.uniform3fv(this.uniformLocations.uColorOuter, theme.outer);
+    gl.uniform3fv(this.uniformLocations.uColorDeep, theme.deep);
+
+    // Draw Quad
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 
-    // FPS Counter
+    // FPS Meter Update
     this.fpsCounter.frames++;
     const now = performance.now();
     if (now - this.fpsCounter.lastTime >= 500) {
@@ -547,6 +594,6 @@ class ManaOverlayApp {
 window.addEventListener('DOMContentLoaded', () => {
   const app = new ManaOverlayApp();
   app.init().catch((err) => {
-    console.error('Failed to initialize Ethereal Mana Smoke Shader Engine:', err);
+    console.error('Failed to initialize Ethereal Mana Smoke Engine:', err);
   });
 });

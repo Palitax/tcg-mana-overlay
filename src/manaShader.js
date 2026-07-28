@@ -1,6 +1,6 @@
 /**
- * High-End Volumetric Ethereal Mana Smoke Shader (Video Quality)
- * Implements Domain-Warped Fractal Brownian Motion (FBM) & Simplex Noise in GLSL.
+ * Volumetric Ethereal Mana Smoke Shader Engine
+ * 100% Safari / Mobile WebGL Compliant GLSL ES 100 Code
  */
 
 export const vertexShaderSource = `
@@ -14,15 +14,19 @@ export const fragmentShaderSource = `
 precision highp float;
 
 uniform float uTime;
-uniform vec2 uResolution;       // Screen dimensions in pixels
-uniform vec2 uCenter;           // Frame center position in pixels
-uniform vec2 uFrameSize;        // Toploader width & height in pixels
-uniform float uRotation;        // Rotation angle in radians
-uniform float uCornerRadius;    // Corner radius in pixels
-uniform float uBorderThickness; // Border thickness in pixels
-uniform float uGlowIntensity;   // Glow multiplier
-uniform float uTurbulence;      // Turbulence speed
-uniform int uTheme;             // Color theme index
+uniform vec2 uResolution;
+uniform vec2 uCenter;
+uniform vec2 uFrameSize;
+uniform float uRotation;
+uniform float uCornerRadius;
+uniform float uBorderThickness;
+uniform float uGlowIntensity;
+uniform float uTurbulence;
+
+uniform vec3 uColorCore;
+uniform vec3 uColorInner;
+uniform vec3 uColorOuter;
+uniform vec3 uColorDeep;
 
 // 2D Simplex Noise
 vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
@@ -55,7 +59,7 @@ float snoise(vec2 v) {
   return 130.0 * dot(m, g);
 }
 
-// 4-Octave Fractal Brownian Motion (FBM) for fluid smoke texture
+// 4-Octave Fractal Brownian Motion (FBM)
 float fbm(vec2 p) {
   float value = 0.0;
   float amplitude = 0.5;
@@ -67,7 +71,7 @@ float fbm(vec2 p) {
   return value;
 }
 
-// Domain Warped Noise: q = fbm(p), r = fbm(p + 4*q + t), result = fbm(p + 4*r)
+// Domain Warped Noise
 float domainWarpedNoise(vec2 p, float time, out vec2 q, out vec2 r) {
   vec2 tVec = vec2(time * 0.15, time * 0.12);
   
@@ -80,108 +84,61 @@ float domainWarpedNoise(vec2 p, float time, out vec2 q, out vec2 r) {
   return fbm(p + 4.0 * r + tVec * 0.5);
 }
 
-// Signed Distance Function (SDF) of Toploader Rounded Box
+// Signed Distance Function (SDF) of Toploader Box
 float sdToploader(vec2 p, vec2 b, float r) {
   vec2 q = abs(p) - b + vec2(r);
   return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - r;
 }
 
 void main(void) {
-  // Convert gl_FragCoord to screen pixels (top-left origin)
   vec2 screenPos = vec2(gl_FragCoord.x, uResolution.y - gl_FragCoord.y);
-  
-  // Position relative to card center
   vec2 pos = screenPos - uCenter;
   
-  // Rotate around center
   float cosA = cos(-uRotation);
   float sinA = sin(-uRotation);
   mat2 rot = mat2(cosA, -sinA, sinA, cosA);
   pos = rot * pos;
   
-  // Toploader Dimensions
   vec2 halfSize = uFrameSize * 0.5;
   float r = clamp(uCornerRadius, 2.0, min(halfSize.x, halfSize.y) - 2.0);
   
-  // Distance to outer boundary of Toploader
   float distOuter = sdToploader(pos, halfSize, r);
   
-  // Distance to inner boundary (hollow card area)
   float innerThickness = uBorderThickness;
   vec2 innerHalfSize = max(vec2(1.0), halfSize - vec2(innerThickness));
   float innerRadius = max(1.0, r - innerThickness * 0.5);
   float distInner = sdToploader(pos, innerHalfSize, innerRadius);
   
-  // Domain Warping Parameters
   float t = uTime * 0.8 * uTurbulence;
-  vec2 st = pos * 0.008; // Domain noise scaling
+  vec2 st = pos * 0.008;
   
   vec2 q, rWarp;
   float warpVal = domainWarpedNoise(st, t, q, rWarp);
   
-  // Outer Wispy Mist Falloff (Distorted by domain warped noise)
-  float distortedDistOuter = distOuter - warpVal * 32.0;
-  float mistFalloff = exp(-0.022 * max(0.0, distortedDistOuter));
+  float distortedDistOuter = distOuter - warpVal * 36.0;
+  float mistFalloff = exp(-0.018 * max(0.0, distortedDistOuter));
   
-  // Border Core Mask
   float borderMask = smoothstep(6.0, -2.0, distOuter) * smoothstep(-innerThickness - 6.0, -innerThickness + 2.0, distInner);
   
-  // Total Volumetric Energy Density
-  float energyDensity = mistFalloff * 0.85 + borderMask * 1.6;
-  energyDensity *= (0.6 + 0.4 * warpVal);
+  float energyDensity = mistFalloff * 0.95 + borderMask * 1.8;
+  energyDensity *= (0.65 + 0.35 * warpVal);
   
-  // Glowing Sparkles floating outward
   float sparkNoise = snoise(st * 5.0 + vec2(0.0, -t * 1.5));
   float spark = pow(max(0.0, sparkNoise), 8.0) * 3.5;
   
-  // Color Palette Definitions (Specified Requirements)
-  vec3 cCore, cInner, cOuter, cDeep;
+  vec3 color = mix(uColorDeep, uColorOuter, smoothstep(140.0, 20.0, distOuter));
+  color = mix(color, uColorInner, smoothstep(20.0, -10.0, distOuter) * (0.6 + 0.4 * length(q)));
+  color = mix(color, uColorCore, smoothstep(5.0, -innerThickness * 0.5, distOuter) * (0.5 + 0.5 * length(rWarp)));
   
-  if (uTheme == 1) { // Red Dragonfire
-    cCore  = vec3(1.0, 0.95, 0.8);  // Bright Core
-    cInner = vec3(1.0, 0.5, 0.0);   // Fire Orange
-    cOuter = vec3(0.8, 0.0, 0.1);   // Crimson
-    cDeep  = vec3(0.2, 0.0, 0.05);  // Dark Fire
-  } else if (uTheme == 2) { // Emerald Life
-    cCore  = vec3(0.9, 1.0, 0.95);  // Radiant White-Green
-    cInner = vec3(0.0, 0.9, 0.5);   // Emerald Mint
-    cOuter = vec3(0.0, 0.5, 0.2);   // Forest Green
-    cDeep  = vec3(0.0, 0.15, 0.08); // Dark Jade
-  } else if (uTheme == 3) { // Void Energy
-    cCore  = vec3(0.98, 0.9, 1.0);  // Cosmic Core
-    cInner = vec3(0.8, 0.1, 1.0);   // Magenta Arcane
-    cOuter = vec3(0.4, 0.0, 0.8);   // Dark Violet
-    cDeep  = vec3(0.12, 0.0, 0.25); // Deep Void
-  } else if (uTheme == 4) { // Holy Sun
-    cCore  = vec3(1.0, 1.0, 0.9);   // Celestial White
-    cInner = vec3(1.0, 0.8, 0.1);   // Golden Sun
-    cOuter = vec3(0.9, 0.4, 0.0);   // Amber Flare
-    cDeep  = vec3(0.25, 0.08, 0.0); // Deep Gold
-  } else { // 0: Blue Ethereal Mana (Target Specification)
-    cCore  = vec3(0.682, 0.937, 1.0); // #AEEFFF Bright Cyan/White Core
-    cInner = vec3(0.0, 0.635, 1.0);  // #00A2FF Vibrant Arcane Blue
-    cOuter = vec3(0.419, 0.0, 1.0);  // #6B00FF Deep Magenta/Violet
-    cDeep  = vec3(0.141, 0.0, 0.275); // #240046 Dark Violet Edge
-  }
+  color += uColorCore * spark * 0.4;
   
-  // Multistage Fluid Gradient Interpolation based on warpVal & distOuter
-  vec3 color = mix(cDeep, cOuter, smoothstep(120.0, 30.0, distOuter));
-  color = mix(color, cInner, smoothstep(30.0, -10.0, distOuter) * (0.6 + 0.4 * length(q)));
-  color = mix(color, cCore, smoothstep(5.0, -innerThickness * 0.5, distOuter) * (0.5 + 0.5 * length(rWarp)));
-  
-  // Add Specular Sparkles
-  color += cCore * spark * 0.4;
-  
-  // Total Alpha computation
   float alpha = clamp(energyDensity * uGlowIntensity, 0.0, 1.0);
   
-  // Hollow out card center so physical card rests un-obscured
   if (distInner < -innerThickness * 0.8) {
     float centerFade = smoothstep(-innerThickness, -innerThickness * 0.8, distInner);
     alpha *= centerFade;
   }
   
-  // Output Color with pre-multiplied alpha
   gl_FragColor = vec4(color * alpha, alpha);
 }
 `;
