@@ -1,0 +1,18 @@
+{
+  "name": "TCG Card Mana Overlay",
+  "short_name": "Mana Overlay",
+  "description": "High-End Glowing Mana Aura Overlay for Physical TCG Cards on iPad",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#030305",
+  "theme_color": "#00e5ff",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

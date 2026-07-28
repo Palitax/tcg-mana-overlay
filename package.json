@@ -1,0 +1,17 @@
+{
+  "name": "tcg-mana-overlay",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "pixi.js": "^8.2.0"
+  },
+  "devDependencies": {
+    "vite": "^5.3.0"
+  }
+}
