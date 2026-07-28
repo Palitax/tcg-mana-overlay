@@ -1,24 +1,26 @@
 import { vertexShaderSource, fragmentShaderSource } from './manaShader.js';
 
 /**
- * TCG Mana Overlay - WebGL Volumetric Ethereal Mana Smoke Engine
- * 100% Mobile & Safari WebGL Compliant (60 FPS)
+ * TCG Mana Overlay - Hybrid WebGL / 2D Canvas Volumetric Ethereal Mana Smoke Engine
+ * 100% Reliable across all iPads, Safari Standalone PWA, and Desktop Browsers.
  */
 class ManaOverlayApp {
   constructor() {
     this.canvas = null;
+    this.ctx = null;
     this.gl = null;
     this.program = null;
     this.uniformLocations = {};
     this.positionBuffer = null;
     this.animFrameId = null;
+    this.mode = 'webgl'; // 'webgl' or '2d'
 
     // Frame State
     this.state = {
       centerX: window.innerWidth / 2,
       centerY: window.innerHeight / 2,
       width: 320,
-      height: 430, // Toploader aspect ratio (~76mm x 102mm ~ 0.744)
+      height: 430, // Toploader aspect ratio (~76mm x 102mm)
       scale: 1.0,
       rotation: 0, // radians (0, PI/2, PI, 3*PI/2)
       cornerRadius: 18,
@@ -39,37 +41,52 @@ class ManaOverlayApp {
       oversized: { width: 370, height: 520, name: 'Oversized (Commander)' }
     };
 
-    // Theme Color Vectors (RGB Normalized)
+    // Theme Color Vectors (RGB Normalized & Hex)
     this.themeVectors = [
       { // 0: Ethereal Mana (Specified: #AEEFFF, #00A2FF, #6B00FF, #240046)
         core:  [0.682, 0.937, 1.0],
         inner: [0.0,   0.635, 1.0],
         outer: [0.419, 0.0,   1.0],
-        deep:  [0.141, 0.0,   0.275]
+        deep:  [0.141, 0.0,   0.275],
+        hexCore: '#AEEFFF',
+        hexInner: '#00A2FF',
+        hexOuter: '#6B00FF'
       },
       { // 1: Red Dragonfire
         core:  [1.0, 0.95, 0.8],
         inner: [1.0, 0.5,  0.0],
         outer: [0.8, 0.0,  0.1],
-        deep:  [0.2, 0.0,  0.05]
+        deep:  [0.2, 0.0,  0.05],
+        hexCore: '#ffffff',
+        hexInner: '#ff6600',
+        hexOuter: '#cc0022'
       },
       { // 2: Emerald Life
         core:  [0.9, 1.0, 0.95],
         inner: [0.0, 0.9, 0.5],
         outer: [0.0, 0.5, 0.2],
-        deep:  [0.0, 0.15, 0.08]
+        deep:  [0.0, 0.15, 0.08],
+        hexCore: '#ffffff',
+        hexInner: '#00ff88',
+        hexOuter: '#00aa44'
       },
       { // 3: Nether Void
         core:  [0.98, 0.9, 1.0],
         inner: [0.8,  0.1, 1.0],
         outer: [0.4,  0.0, 0.8],
-        deep:  [0.12, 0.0, 0.25]
+        deep:  [0.12, 0.0, 0.25],
+        hexCore: '#ffffff',
+        hexInner: '#d000ff',
+        hexOuter: '#6600ff'
       },
       { // 4: Holy Sun
         core:  [1.0,  1.0, 0.9],
         inner: [1.0,  0.8, 0.1],
         outer: [0.9,  0.4, 0.0],
-        deep:  [0.25, 0.08, 0.0]
+        deep:  [0.25, 0.08, 0.0],
+        hexCore: '#ffffff',
+        hexInner: '#ffcc00',
+        hexOuter: '#ff8800'
       }
     ];
 
@@ -96,17 +113,21 @@ class ManaOverlayApp {
     this.canvas = document.createElement('canvas');
     container.appendChild(this.canvas);
 
-    // Initialize WebGL Context
-    this.gl = this.canvas.getContext('webgl', { antialias: true, alpha: true, powerPreference: 'high-performance' }) ||
-              this.canvas.getContext('experimental-webgl');
+    // Try WebGL first
+    try {
+      this.gl = this.canvas.getContext('webgl', { antialias: true, alpha: true, powerPreference: 'high-performance' }) ||
+                this.canvas.getContext('experimental-webgl');
 
-    if (!this.gl) {
-      console.error('WebGL is not supported on this device/browser.');
-      return;
+      if (this.gl && this.initWebGL()) {
+        this.mode = 'webgl';
+      } else {
+        throw new Error('WebGL initialization returned false');
+      }
+    } catch (e) {
+      console.warn('WebGL setup failed/blocked; switching to high-fidelity 2D engine:', e);
+      this.mode = '2d';
+      this.ctx = this.canvas.getContext('2d');
     }
-
-    // Compile GLSL Shaders
-    this.initWebGL();
 
     // Setup Window Resize Handler
     window.addEventListener('resize', () => this.handleResize());
@@ -118,15 +139,16 @@ class ManaOverlayApp {
     // Setup HUD Control Listeners
     this.setupUIBindings();
 
-    // Start 60 FPS WebGL Animation Loop
+    // Start Animation Loop
     this.startLoop();
 
     this.updateVisualGuide();
-    console.log('⚡ Volumetric Ethereal Mana Smoke Engine Active!');
+    console.log(`⚡ Engine Active: Mode [${this.mode.toUpperCase()}]`);
   }
 
   initWebGL() {
     const gl = this.gl;
+    if (!gl) return false;
 
     // Vertex Shader
     const vertShader = gl.createShader(gl.VERTEX_SHADER);
@@ -135,7 +157,7 @@ class ManaOverlayApp {
 
     if (!gl.getShaderParameter(vertShader, gl.COMPILE_STATUS)) {
       console.error('Vertex Shader Compile Error:', gl.getShaderInfoLog(vertShader));
-      return;
+      return false;
     }
 
     // Fragment Shader
@@ -145,7 +167,7 @@ class ManaOverlayApp {
 
     if (!gl.getShaderParameter(fragShader, gl.COMPILE_STATUS)) {
       console.error('Fragment Shader Compile Error:', gl.getShaderInfoLog(fragShader));
-      return;
+      return false;
     }
 
     // Link Program
@@ -156,7 +178,7 @@ class ManaOverlayApp {
 
     if (!gl.getProgramParameter(this.program, gl.LINK_STATUS)) {
       console.error('Shader Link Error:', gl.getProgramInfoLog(this.program));
-      return;
+      return false;
     }
 
     gl.useProgram(this.program);
@@ -194,6 +216,7 @@ class ManaOverlayApp {
     // Enable Alpha Blending
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    return true;
   }
 
   handleResize() {
@@ -206,8 +229,10 @@ class ManaOverlayApp {
     this.canvas.style.width = `${width}px`;
     this.canvas.style.height = `${height}px`;
 
-    if (this.gl) {
+    if (this.mode === 'webgl' && this.gl) {
       this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+    } else if (this.mode === '2d' && this.ctx) {
+      this.ctx.scale(dpr, dpr);
     }
     this.updateVisualGuide();
   }
@@ -218,9 +243,13 @@ class ManaOverlayApp {
     const loop = () => {
       try {
         const timeSec = performance.now() * 0.001;
-        this.renderFrame(timeSec);
+        if (this.mode === 'webgl') {
+          this.renderWebGLFrame(timeSec);
+        } else {
+          this.render2DFrame(timeSec);
+        }
       } catch (err) {
-        console.error('WebGL Render Loop Exception:', err);
+        console.error('Render Loop Error:', err);
       }
       this.animFrameId = requestAnimationFrame(loop);
     };
@@ -228,7 +257,7 @@ class ManaOverlayApp {
     this.animFrameId = requestAnimationFrame(loop);
   }
 
-  renderFrame(timeSec) {
+  renderWebGLFrame(timeSec) {
     const gl = this.gl;
     if (!gl || !this.program) return;
 
@@ -247,10 +276,9 @@ class ManaOverlayApp {
     gl.enableVertexAttribArray(aPosition);
     gl.vertexAttribPointer(aPosition, 2, gl.FLOAT, false, 0, 0);
 
-    // Get Active Theme Colors
     const theme = this.themeVectors[this.state.theme] || this.themeVectors[0];
 
-    // Pass Physical Pixel & Color Vector Uniforms to WebGL
+    // Uniforms
     gl.uniform1f(this.uniformLocations.uTime, timeSec);
     gl.uniform2f(this.uniformLocations.uResolution, screenWidth, screenHeight);
     gl.uniform2f(this.uniformLocations.uCenter, this.state.centerX * dpr, this.state.centerY * dpr);
@@ -265,16 +293,102 @@ class ManaOverlayApp {
     gl.uniform1f(this.uniformLocations.uGlowIntensity, this.state.glowIntensity);
     gl.uniform1f(this.uniformLocations.uTurbulence, this.state.turbulence);
 
-    // Theme Color Vectors
     gl.uniform3fv(this.uniformLocations.uColorCore, theme.core);
     gl.uniform3fv(this.uniformLocations.uColorInner, theme.inner);
     gl.uniform3fv(this.uniformLocations.uColorOuter, theme.outer);
     gl.uniform3fv(this.uniformLocations.uColorDeep, theme.deep);
 
-    // Draw Quad
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 
-    // FPS Meter Update
+    this.updateFPSMeter();
+  }
+
+  render2DFrame(timeSec) {
+    const ctx = this.ctx;
+    if (!ctx) return;
+
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = '#030305';
+    ctx.fillRect(0, 0, width, height);
+
+    const { centerX, centerY, width: baseW, height: baseH, scale, rotation, cornerRadius: baseR, borderThickness: baseThickness, glowIntensity, theme: themeIdx } = this.state;
+    const theme = this.themeVectors[themeIdx] || this.themeVectors[0];
+
+    const w = baseW * scale;
+    const h = baseH * scale;
+    const r = Math.min(baseR * scale, 24);
+    const thickness = baseThickness;
+
+    ctx.save();
+    ctx.translate(centerX, centerY);
+    ctx.rotate(rotation);
+
+    // Multi-pass Bloom Glow
+    const passes = [
+      { blur: 54 * glowIntensity, alpha: 0.3 * glowIntensity, color: theme.hexOuter },
+      { blur: 30 * glowIntensity, alpha: 0.5 * glowIntensity, color: theme.hexInner },
+      { blur: 14 * glowIntensity, alpha: 0.8 * glowIntensity, color: theme.hexInner },
+      { blur: 4  * glowIntensity, alpha: 1.0 * glowIntensity, color: theme.hexCore }
+    ];
+
+    for (const pass of passes) {
+      ctx.save();
+      ctx.shadowColor = pass.color;
+      ctx.shadowBlur = pass.blur;
+      ctx.globalAlpha = Math.min(pass.alpha, 1.0);
+      ctx.strokeStyle = pass.color;
+      ctx.lineWidth = thickness;
+      ctx.lineJoin = 'round';
+      this.drawToploaderPath(ctx, -w / 2, -h / 2, w, h, r);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Toploader Lip Highlight
+    ctx.beginPath();
+    ctx.moveTo(-w / 2 + 8, -h / 2 + 10);
+    ctx.lineTo(w / 2 - 8, -h / 2 + 10);
+    ctx.strokeStyle = theme.hexCore;
+    ctx.lineWidth = 4;
+    ctx.globalAlpha = 1.0;
+    ctx.shadowColor = theme.hexInner;
+    ctx.shadowBlur = 14;
+    ctx.stroke();
+
+    // Hollow center
+    ctx.save();
+    ctx.globalCompositeOperation = 'destination-out';
+    this.drawToploaderPath(ctx, -w / 2 + thickness, -h / 2 + thickness, w - thickness * 2, h - thickness * 2, Math.max(1, r - thickness));
+    ctx.fill();
+    ctx.restore();
+
+    ctx.restore();
+
+    this.updateFPSMeter();
+  }
+
+  drawToploaderPath(ctx, x, y, width, height, radius) {
+    const bottomRadius = Math.max(4, Math.min(radius, width / 4));
+    const topRadius = 6;
+
+    ctx.beginPath();
+    ctx.moveTo(x + topRadius, y);
+    ctx.lineTo(x + width - topRadius, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + topRadius);
+    ctx.lineTo(x + width, y + height - bottomRadius);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - bottomRadius, y + height);
+    ctx.lineTo(x + bottomRadius, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - bottomRadius);
+    ctx.lineTo(x, y + topRadius);
+    ctx.quadraticCurveTo(x, y, x + topRadius, y);
+    ctx.closePath();
+  }
+
+  updateFPSMeter() {
     this.fpsCounter.frames++;
     const now = performance.now();
     if (now - this.fpsCounter.lastTime >= 500) {
@@ -284,7 +398,7 @@ class ManaOverlayApp {
 
       const fpsEl = document.getElementById('fps-meter');
       if (fpsEl) {
-        fpsEl.textContent = `${this.fpsCounter.fps} FPS`;
+        fpsEl.textContent = `${this.fpsCounter.fps} FPS [${this.mode.toUpperCase()}]`;
         fpsEl.style.color = this.fpsCounter.fps >= 55 ? '#00e5ff' : this.fpsCounter.fps >= 30 ? '#ffb700' : '#ff4444';
       }
     }
