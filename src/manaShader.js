@@ -1,11 +1,10 @@
 /**
- * High-Performance GLSL Shaders for TCG Mana Overlay
- * Supports WebGL 2 & WebGL 1 across mobile iPad Safari & Desktop
+ * High-End Volumetric Ethereal Mana Smoke Shader (Video Quality)
+ * Implements Domain-Warped Fractal Brownian Motion (FBM) & Simplex Noise in GLSL.
  */
 
 export const vertexShaderSource = `
 attribute vec2 aPosition;
-
 void main(void) {
   gl_Position = vec4(aPosition, 0.0, 1.0);
 }
@@ -15,17 +14,17 @@ export const fragmentShaderSource = `
 precision highp float;
 
 uniform float uTime;
-uniform vec2 uResolution;       // Screen size in pixels (width, height)
-uniform vec2 uCenter;           // Card frame center position in pixels
-uniform vec2 uFrameSize;        // Card frame width & height in pixels
+uniform vec2 uResolution;       // Screen dimensions in pixels
+uniform vec2 uCenter;           // Frame center position in pixels
+uniform vec2 uFrameSize;        // Toploader width & height in pixels
 uniform float uRotation;        // Rotation angle in radians
 uniform float uCornerRadius;    // Corner radius in pixels
 uniform float uBorderThickness; // Border thickness in pixels
-uniform float uGlowIntensity;   // Glow brightness multiplier (0.4 - 3.0)
-uniform float uTurbulence;      // Fluid turbulence animation speed
-uniform int uTheme;             // 0: Blue, 1: Red, 2: Green, 3: Purple, 4: Gold
+uniform float uGlowIntensity;   // Glow multiplier
+uniform float uTurbulence;      // Turbulence speed
+uniform int uTheme;             // Color theme index
 
-// 2D Simplex / Perlin noise for fluid Mana turbulence
+// 2D Simplex Noise
 vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
 vec2 mod289(vec2 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
 vec3 permute(vec3 x) { return mod289(((x * 34.0) + 1.0) * x); }
@@ -56,117 +55,133 @@ float snoise(vec2 v) {
   return 130.0 * dot(m, g);
 }
 
-// Fractal Brownian Motion for swirling fluid smoke
+// 4-Octave Fractal Brownian Motion (FBM) for fluid smoke texture
 float fbm(vec2 p) {
   float value = 0.0;
   float amplitude = 0.5;
-  for (int i = 0; i < 3; i++) {
+  for (int i = 0; i < 4; i++) {
     value += amplitude * snoise(p);
-    p *= 2.04;
+    p *= 2.02;
     amplitude *= 0.5;
   }
   return value;
 }
 
-// Signed Distance Function (SDF) of a rounded box
-float sdRoundedBox(vec2 p, vec2 b, float r) {
+// Domain Warped Noise: q = fbm(p), r = fbm(p + 4*q + t), result = fbm(p + 4*r)
+float domainWarpedNoise(vec2 p, float time, out vec2 q, out vec2 r) {
+  vec2 tVec = vec2(time * 0.15, time * 0.12);
+  
+  q.x = fbm(p + vec2(0.0, 0.0));
+  q.y = fbm(p + vec2(5.2, 1.3));
+  
+  r.x = fbm(p + 4.0 * q + vec2(1.7, 9.2) + tVec);
+  r.y = fbm(p + 4.0 * q + vec2(8.3, 2.8) - tVec * 0.8);
+  
+  return fbm(p + 4.0 * r + tVec * 0.5);
+}
+
+// Signed Distance Function (SDF) of Toploader Rounded Box
+float sdToploader(vec2 p, vec2 b, float r) {
   vec2 q = abs(p) - b + vec2(r);
   return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - r;
 }
 
 void main(void) {
-  // Convert WebGL bottom-left fragCoord to screen top-left coordinates
+  // Convert gl_FragCoord to screen pixels (top-left origin)
   vec2 screenPos = vec2(gl_FragCoord.x, uResolution.y - gl_FragCoord.y);
   
-  // Position relative to card frame center
+  // Position relative to card center
   vec2 pos = screenPos - uCenter;
   
   // Rotate around center
   float cosA = cos(-uRotation);
   float sinA = sin(-uRotation);
-  mat2 rotMatrix = mat2(cosA, -sinA, sinA, cosA);
-  pos = rotMatrix * pos;
+  mat2 rot = mat2(cosA, -sinA, sinA, cosA);
+  pos = rot * pos;
   
-  // Card dimensions
+  // Toploader Dimensions
   vec2 halfSize = uFrameSize * 0.5;
   float r = clamp(uCornerRadius, 2.0, min(halfSize.x, halfSize.y) - 2.0);
   
-  // Distance from outer frame edge
-  float distOuter = sdRoundedBox(pos, halfSize, r);
+  // Distance to outer boundary of Toploader
+  float distOuter = sdToploader(pos, halfSize, r);
   
-  // Distance from inner frame boundary (hollow center)
+  // Distance to inner boundary (hollow card area)
   float innerThickness = uBorderThickness;
   vec2 innerHalfSize = max(vec2(1.0), halfSize - vec2(innerThickness));
   float innerRadius = max(1.0, r - innerThickness * 0.5);
-  float distInner = sdRoundedBox(pos, innerHalfSize, innerRadius);
+  float distInner = sdToploader(pos, innerHalfSize, innerRadius);
   
-  // Outer Bloom Glow: exponential falloff outside the frame
-  float outerGlow = exp(-0.04 * max(0.0, distOuter));
+  // Domain Warping Parameters
+  float t = uTime * 0.8 * uTurbulence;
+  vec2 st = pos * 0.008; // Domain noise scaling
   
-  // Inner Bloom Glow: exponential falloff fading inside the hollow area
-  float innerGlow = exp(-0.06 * max(0.0, -distInner));
+  vec2 q, rWarp;
+  float warpVal = domainWarpedNoise(st, t, q, rWarp);
   
-  // Solid border mask
-  float borderMask = smoothstep(4.0, -2.0, distOuter) * smoothstep(-innerThickness - 4.0, -innerThickness + 2.0, distInner);
+  // Outer Wispy Mist Falloff (Distorted by domain warped noise)
+  float distortedDistOuter = distOuter - warpVal * 32.0;
+  float mistFalloff = exp(-0.022 * max(0.0, distortedDistOuter));
   
-  // Total light intensity
-  float totalGlow = outerGlow * 0.8 + innerGlow * 0.3 + borderMask * 1.8;
+  // Border Core Mask
+  float borderMask = smoothstep(6.0, -2.0, distOuter) * smoothstep(-innerThickness - 6.0, -innerThickness + 2.0, distInner);
   
-  // Domain Warping Fluid Turbulence
-  vec2 st = pos * 0.012;
-  float t = uTime * 1.1 * uTurbulence;
+  // Total Volumetric Energy Density
+  float energyDensity = mistFalloff * 0.85 + borderMask * 1.6;
+  energyDensity *= (0.6 + 0.4 * warpVal);
   
-  float angle = atan(pos.y, pos.x);
-  float n1 = fbm(st + vec2(t * 0.25, -t * 0.15));
-  float n2 = fbm(st * 1.6 + vec2(n1 * 1.4, t * 0.4));
-  float noise = fbm(st * 2.2 + vec2(n2 * 1.8, angle * 0.5));
+  // Glowing Sparkles floating outward
+  float sparkNoise = snoise(st * 5.0 + vec2(0.0, -t * 1.5));
+  float spark = pow(max(0.0, sparkNoise), 8.0) * 3.5;
   
-  // Floating energy sparks along frame border
-  float sparkNoise = snoise(st * 6.0 + vec2(0.0, t * 2.0));
-  float spark = pow(max(0.0, sparkNoise), 7.0) * 3.5;
-  
-  // Elemental Color Themes
-  vec3 cPrimary, cAccent, cCore;
+  // Color Palette Definitions (Specified Requirements)
+  vec3 cCore, cInner, cOuter, cDeep;
   
   if (uTheme == 1) { // Red Dragonfire
-    cPrimary = vec3(0.95, 0.12, 0.02);
-    cAccent  = vec3(1.0, 0.55, 0.05);
-    cCore    = vec3(1.0, 0.95, 0.75);
-  } else if (uTheme == 2) { // Emerald Nature
-    cPrimary = vec3(0.02, 0.85, 0.35);
-    cAccent  = vec3(0.25, 1.0, 0.65);
-    cCore    = vec3(0.85, 1.0, 0.92);
+    cCore  = vec3(1.0, 0.95, 0.8);  // Bright Core
+    cInner = vec3(1.0, 0.5, 0.0);   // Fire Orange
+    cOuter = vec3(0.8, 0.0, 0.1);   // Crimson
+    cDeep  = vec3(0.2, 0.0, 0.05);  // Dark Fire
+  } else if (uTheme == 2) { // Emerald Life
+    cCore  = vec3(0.9, 1.0, 0.95);  // Radiant White-Green
+    cInner = vec3(0.0, 0.9, 0.5);   // Emerald Mint
+    cOuter = vec3(0.0, 0.5, 0.2);   // Forest Green
+    cDeep  = vec3(0.0, 0.15, 0.08); // Dark Jade
   } else if (uTheme == 3) { // Void Energy
-    cPrimary = vec3(0.55, 0.05, 0.95);
-    cAccent  = vec3(0.92, 0.25, 1.0);
-    cCore    = vec3(0.96, 0.85, 1.0);
+    cCore  = vec3(0.98, 0.9, 1.0);  // Cosmic Core
+    cInner = vec3(0.8, 0.1, 1.0);   // Magenta Arcane
+    cOuter = vec3(0.4, 0.0, 0.8);   // Dark Violet
+    cDeep  = vec3(0.12, 0.0, 0.25); // Deep Void
   } else if (uTheme == 4) { // Holy Sun
-    cPrimary = vec3(1.0, 0.55, 0.02);
-    cAccent  = vec3(1.0, 0.88, 0.25);
-    cCore    = vec3(1.0, 0.98, 0.88);
-  } else { // Blue Mana (Default WoW Arcane Mana)
-    cPrimary = vec3(0.0, 0.28, 0.98);
-    cAccent  = vec3(0.0, 0.92, 1.0);
-    cCore    = vec3(0.85, 0.98, 1.0);
+    cCore  = vec3(1.0, 1.0, 0.9);   // Celestial White
+    cInner = vec3(1.0, 0.8, 0.1);   // Golden Sun
+    cOuter = vec3(0.9, 0.4, 0.0);   // Amber Flare
+    cDeep  = vec3(0.25, 0.08, 0.0); // Deep Gold
+  } else { // 0: Blue Ethereal Mana (Target Specification)
+    cCore  = vec3(0.682, 0.937, 1.0); // #AEEFFF Bright Cyan/White Core
+    cInner = vec3(0.0, 0.635, 1.0);  // #00A2FF Vibrant Arcane Blue
+    cOuter = vec3(0.419, 0.0, 1.0);  // #6B00FF Deep Magenta/Violet
+    cDeep  = vec3(0.141, 0.0, 0.275); // #240046 Dark Violet Edge
   }
   
-  // Color Mixing
-  vec3 finalRgb = mix(cPrimary, cAccent, clamp(noise * 0.65 + 0.35, 0.0, 1.0));
+  // Multistage Fluid Gradient Interpolation based on warpVal & distOuter
+  vec3 color = mix(cDeep, cOuter, smoothstep(120.0, 30.0, distOuter));
+  color = mix(color, cInner, smoothstep(30.0, -10.0, distOuter) * (0.6 + 0.4 * length(q)));
+  color = mix(color, cCore, smoothstep(5.0, -innerThickness * 0.5, distOuter) * (0.5 + 0.5 * length(rWarp)));
   
-  // Bright Core Line along border center
-  float borderCenter = abs(distOuter + distInner) * 0.5;
-  float coreLine = smoothstep(10.0, 0.0, borderCenter);
-  finalRgb = mix(finalRgb, cCore, coreLine * 0.65 + spark * 0.35);
+  // Add Specular Sparkles
+  color += cCore * spark * 0.4;
   
-  // Alpha computation
-  float alpha = clamp((totalGlow * (0.6 + noise * 0.4) + spark * 0.25) * uGlowIntensity, 0.0, 1.0);
+  // Total Alpha computation
+  float alpha = clamp(energyDensity * uGlowIntensity, 0.0, 1.0);
   
-  // Hollow out middle so card is completely un-obscured
-  if (distInner < -innerThickness * 0.75) {
-    float innerFade = smoothstep(-innerThickness, -innerThickness * 0.75, distInner);
-    alpha *= innerFade;
+  // Hollow out card center so physical card rests un-obscured
+  if (distInner < -innerThickness * 0.8) {
+    float centerFade = smoothstep(-innerThickness, -innerThickness * 0.8, distInner);
+    alpha *= centerFade;
   }
   
-  gl_FragColor = vec4(finalRgb * alpha, alpha);
+  // Output Color with pre-multiplied alpha
+  gl_FragColor = vec4(color * alpha, alpha);
 }
 `;
