@@ -25,6 +25,7 @@ class VideoLooperApp {
     this.btnZoomOut = document.getElementById('btn-zoom-out');
     this.btnShiftUp = document.getElementById('btn-shift-up');
     this.btnShiftDown = document.getElementById('btn-shift-down');
+    this.btnFullscreen = document.getElementById('btn-fullscreen');
     this.btnClearVideo = document.getElementById('btn-clear-video');
     this.fitLabel = document.getElementById('fit-label');
     this.zoomValue = document.getElementById('zoom-value');
@@ -119,6 +120,13 @@ class VideoLooperApp {
       e.stopPropagation();
       this.shiftVideo(0, 30);
     });
+
+    if (this.btnFullscreen) {
+      this.btnFullscreen.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.toggleFullscreen();
+      });
+    }
 
     this.btnClearVideo.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -480,6 +488,25 @@ class VideoLooperApp {
 
     this.videoA.style.setProperty('--video-offset-y', `${this.offsetY}px`);
     this.videoB.style.setProperty('--video-offset-y', `${this.offsetY}px`);
+  }
+
+  toggleFullscreen() {
+    const elem = document.documentElement;
+    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+      if (elem.webkitRequestFullscreen) {
+        elem.webkitRequestFullscreen();
+      } else if (elem.requestFullscreen) {
+        elem.requestFullscreen().catch(() => {});
+      }
+      this.showToast('Echtes Vollbild aktiviert');
+    } else {
+      if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+      } else if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+      this.showToast('Vollbild beendet');
+    }
   }
 
   toggleFitMode() {

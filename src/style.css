@@ -262,6 +262,17 @@ html, body {
   transform: scale(0.97);
 }
 
+.btn-primary-pill {
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 0 18px;
+  height: 42px;
+  border-radius: 22px;
+  font-size: 0.88rem;
+  box-shadow: 0 4px 16px var(--primary-glow);
+}
+
 .btn-secondary-pill {
   background: rgba(255, 255, 255, 0.1);
   color: #ffffff;
