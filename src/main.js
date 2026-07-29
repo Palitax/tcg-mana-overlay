@@ -23,6 +23,8 @@ class VideoLooperApp {
     this.btnToggleFit = document.getElementById('btn-toggle-fit');
     this.btnZoomIn = document.getElementById('btn-zoom-in');
     this.btnZoomOut = document.getElementById('btn-zoom-out');
+    this.btnShiftUp = document.getElementById('btn-shift-up');
+    this.btnShiftDown = document.getElementById('btn-shift-down');
     this.btnClearVideo = document.getElementById('btn-clear-video');
     this.fitLabel = document.getElementById('fit-label');
     this.zoomValue = document.getElementById('zoom-value');
@@ -33,31 +35,45 @@ class VideoLooperApp {
     this.iconPlay = document.getElementById('icon-play');
     this.iconPause = document.getElementById('icon-pause');
 
-    // Engine States
+    // Engine & Transform States
     this.videos = [this.videoA, this.videoB];
     this.activeIndex = 0;
     this.objectUrl = null;
     this.isPlaying = false;
     this.isMuted = true;
     this.fitMode = 'cover'; // 'cover', 'fill', 'contain'
-    this.zoomScale = 1.01; // Default subpixel scale for edge-to-edge full screen
+    
+    this.zoomScale = 1.08; // Default 108% to overbleed any bottom safe-area / letterbox gap
+    this.offsetX = 0;
+    this.offsetY = 0;
+
     this.isSwapping = false;
     this.rafId = null;
     this.autoHideTimer = null;
     this.uiVisible = true;
+
+    // Gesture tracking variables
+    this.touchStartX = 0;
+    this.touchStartY = 0;
+    this.startOffsetX = 0;
+    this.startOffsetY = 0;
+    this.isDragging = false;
+    this.hasMoved = false;
+    this.pinchStartDist = 0;
+    this.pinchStartScale = 1;
 
     this.init();
   }
 
   async init() {
     this.bindEvents();
+    this.bindGestures();
     this.initIndexedDB();
     await this.tryRestoreSavedVideo();
   }
 
-  /* --- Event Listeners & Gesture Controls --- */
+  /* --- Event Listeners --- */
   bindEvents() {
-    // File inputs
     const handleFile = (e) => {
       const file = e.target.files && e.target.files[0];
       if (file) {
@@ -67,13 +83,6 @@ class VideoLooperApp {
 
     this.videoFileInput.addEventListener('change', handleFile);
     this.videoFileInputSecondary.addEventListener('change', handleFile);
-
-    // Screen Tap overlay toggles UI
-    this.tapOverlay.addEventListener('click', () => {
-      if (this.objectUrl) {
-        this.toggleUI();
-      }
-    });
 
     // Control buttons
     this.btnTogglePlay.addEventListener('click', (e) => {
@@ -101,12 +110,21 @@ class VideoLooperApp {
       this.adjustZoom(-0.05);
     });
 
+    this.btnShiftUp.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.shiftVideo(0, -30);
+    });
+
+    this.btnShiftDown.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.shiftVideo(0, 30);
+    });
+
     this.btnClearVideo.addEventListener('click', (e) => {
       e.stopPropagation();
       this.clearSavedVideo();
     });
 
-    // Auto-hide UI reset on interaction
     const resetTimer = () => {
       if (this.isPlaying && this.uiVisible) {
         this.scheduleAutoHide();
@@ -114,7 +132,109 @@ class VideoLooperApp {
     };
 
     window.addEventListener('mousemove', resetTimer);
-    window.addEventListener('touchstart', resetTimer);
+    window.addEventListener('touchstart', resetTimer, { passive: true });
+  }
+
+  /* --- Touch Drag & Pinch Gestures on iPad Screen --- */
+  bindGestures() {
+    const overlay = this.tapOverlay;
+
+    overlay.addEventListener('touchstart', (e) => {
+      if (!this.objectUrl) return;
+
+      if (e.touches.length === 1) {
+        // Single finger pan/drag
+        this.isDragging = true;
+        this.hasMoved = false;
+        this.touchStartX = e.touches[0].clientX;
+        this.touchStartY = e.touches[0].clientY;
+        this.startOffsetX = this.offsetX;
+        this.startOffsetY = this.offsetY;
+      } else if (e.touches.length === 2) {
+        // Pinch to zoom
+        this.isDragging = false;
+        this.pinchStartDist = this.getTouchDistance(e.touches);
+        this.pinchStartScale = this.zoomScale;
+      }
+    }, { passive: true });
+
+    overlay.addEventListener('touchmove', (e) => {
+      if (!this.objectUrl) return;
+
+      if (this.isDragging && e.touches.length === 1) {
+        const dx = e.touches[0].clientX - this.touchStartX;
+        const dy = e.touches[0].clientY - this.touchStartY;
+
+        if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
+          this.hasMoved = true;
+        }
+
+        this.offsetX = this.startOffsetX + dx;
+        this.offsetY = this.startOffsetY + dy;
+        this.applyTransform();
+      } else if (e.touches.length === 2) {
+        const currentDist = this.getTouchDistance(e.touches);
+        if (this.pinchStartDist > 0) {
+          const scaleRatio = currentDist / this.pinchStartDist;
+          this.zoomScale = Math.max(0.8, Math.min(3.0, Math.round(this.pinchStartScale * scaleRatio * 100) / 100));
+          this.applyTransform();
+        }
+      }
+    }, { passive: true });
+
+    overlay.addEventListener('touchend', (e) => {
+      if (!this.objectUrl) return;
+
+      if (!this.hasMoved && e.touches.length === 0) {
+        // Pure tap without movement toggles UI
+        this.toggleUI();
+      }
+
+      this.isDragging = false;
+      this.pinchStartDist = 0;
+    }, { passive: true });
+
+    // Mouse Drag support for Desktop testing
+    let isMouseDown = false;
+    overlay.addEventListener('mousedown', (e) => {
+      if (!this.objectUrl) return;
+      isMouseDown = true;
+      this.hasMoved = false;
+      this.touchStartX = e.clientX;
+      this.touchStartY = e.clientY;
+      this.startOffsetX = this.offsetX;
+      this.startOffsetY = this.offsetY;
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (isMouseDown && this.objectUrl) {
+        const dx = e.clientX - this.touchStartX;
+        const dy = e.clientY - this.touchStartY;
+
+        if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
+          this.hasMoved = true;
+        }
+
+        this.offsetX = this.startOffsetX + dx;
+        this.offsetY = this.startOffsetY + dy;
+        this.applyTransform();
+      }
+    });
+
+    window.addEventListener('mouseup', (e) => {
+      if (isMouseDown) {
+        isMouseDown = false;
+        if (!this.hasMoved) {
+          this.toggleUI();
+        }
+      }
+    });
+  }
+
+  getTouchDistance(touches) {
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
   }
 
   /* --- IndexedDB Storage Helper --- */
@@ -216,7 +336,11 @@ class VideoLooperApp {
     this.videoA.classList.add('active');
     this.videoB.classList.remove('active');
 
-    this.applyZoom();
+    // Reset offsets and apply default zoom
+    this.offsetX = 0;
+    this.offsetY = 0;
+    this.zoomScale = 1.08;
+    this.applyTransform();
 
     this.emptyState.classList.add('hidden');
     this.uiControls.classList.remove('hidden');
@@ -331,34 +455,49 @@ class VideoLooperApp {
     }
   }
 
-  /* --- Zoom & Aspect Ratio Scaling Controls --- */
+  /* --- Zoom & Position Transform Engine --- */
+  shiftVideo(dx, dy) {
+    this.offsetX += dx;
+    this.offsetY += dy;
+    this.applyTransform();
+    this.showToast(`Position verschoben (Y: ${Math.round(this.offsetY)}px)`);
+  }
+
   adjustZoom(delta) {
-    this.zoomScale = Math.max(0.8, Math.min(2.5, Math.round((this.zoomScale + delta) * 100) / 100));
-    this.applyZoom();
+    this.zoomScale = Math.max(0.8, Math.min(3.0, Math.round((this.zoomScale + delta) * 100) / 100));
+    this.applyTransform();
     this.showToast(`Zoom: ${Math.round(this.zoomScale * 100)}%`);
   }
 
-  applyZoom() {
+  applyTransform() {
     this.zoomValue.textContent = `${Math.round(this.zoomScale * 100)}%`;
+
     this.videoA.style.setProperty('--video-zoom', this.zoomScale);
     this.videoB.style.setProperty('--video-zoom', this.zoomScale);
+
+    this.videoA.style.setProperty('--video-offset-x', `${this.offsetX}px`);
+    this.videoB.style.setProperty('--video-offset-x', `${this.offsetX}px`);
+
+    this.videoA.style.setProperty('--video-offset-y', `${this.offsetY}px`);
+    this.videoB.style.setProperty('--video-offset-y', `${this.offsetY}px`);
   }
 
   toggleFitMode() {
     if (this.fitMode === 'cover') {
-      // Step 2: 133% iPad Pro 12.9" 4:3 Aspect Boost (Ideal for 16:9 videos on 4:3 screens)
       this.fitMode = 'ipad129';
       this.zoomScale = 1.33;
-      this.applyZoom();
+      this.offsetY = -20; // Automatically shift up by 20px to eliminate any bottom letterbox bar
+      this.applyTransform();
       this.videoA.classList.remove('fit-fill', 'fit-contain');
       this.videoB.classList.remove('fit-fill', 'fit-contain');
       this.fitLabel.textContent = 'iPad Pro (133%)';
-      this.showToast('Modus: iPad Pro 12,9" (133% Zoom - 0% Ränder)');
+      this.showToast('Modus: iPad Pro 12,9" (133% Zoom + Shift)');
     } else if (this.fitMode === 'ipad129') {
-      // Step 3: Stretch Fill (Forces 100% height & width matching iPad display)
       this.fitMode = 'fill';
       this.zoomScale = 1.0;
-      this.applyZoom();
+      this.offsetX = 0;
+      this.offsetY = 0;
+      this.applyTransform();
       this.videoA.classList.remove('fit-contain');
       this.videoB.classList.remove('fit-contain');
       this.videoA.classList.add('fit-fill');
@@ -366,10 +505,11 @@ class VideoLooperApp {
       this.fitLabel.textContent = 'Strecken (Fill)';
       this.showToast('Modus: Strecken auf 100% Display');
     } else if (this.fitMode === 'fill') {
-      // Step 4: Contain (Letterbox original)
       this.fitMode = 'contain';
       this.zoomScale = 1.0;
-      this.applyZoom();
+      this.offsetX = 0;
+      this.offsetY = 0;
+      this.applyTransform();
       this.videoA.classList.remove('fit-fill');
       this.videoB.classList.remove('fit-fill');
       this.videoA.classList.add('fit-contain');
@@ -377,14 +517,15 @@ class VideoLooperApp {
       this.fitLabel.textContent = 'Contain';
       this.showToast('Modus: Original mit Rändern (Contain)');
     } else {
-      // Step 1: Default Cover Fill (0% Ränder)
       this.fitMode = 'cover';
-      this.zoomScale = 1.01;
-      this.applyZoom();
+      this.zoomScale = 1.08;
+      this.offsetX = 0;
+      this.offsetY = 0;
+      this.applyTransform();
       this.videoA.classList.remove('fit-fill', 'fit-contain');
       this.videoB.classList.remove('fit-fill', 'fit-contain');
-      this.fitLabel.textContent = 'Cover (0% Ränder)';
-      this.showToast('Modus: Vollbild (0% Ränder)');
+      this.fitLabel.textContent = 'Cover (108%)';
+      this.showToast('Modus: Vollbild Cover');
     }
   }
 
@@ -435,7 +576,7 @@ class VideoLooperApp {
     if (isPlaying) {
       this.iconPlay.classList.add('hidden');
       this.iconPause.classList.remove('hidden');
-      this.statusText.textContent = 'iPad Pro 12,9" Loop';
+      this.statusText.textContent = 'iPad Pro Loop';
     } else {
       this.iconPlay.classList.remove('hidden');
       this.iconPause.classList.add('hidden');

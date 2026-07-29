@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>iPad Pro 12.9" Seamless Video Looper</title>
+  <title>iPad Pro Seamless Video Looper</title>
   
   <!-- iOS PWA Meta Tags -->
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -30,7 +30,7 @@
       <video id="videoB" class="video-layer" playsinline webkit-playsinline muted preload="auto"></video>
     </div>
 
-    <!-- Background Tap Receiver to toggle UI -->
+    <!-- Background Touch Gesture Receiver (Pan & Pinch to zoom & position video) -->
     <div id="tap-overlay"></div>
 
     <!-- Empty State (No video loaded) -->
@@ -71,7 +71,7 @@
         <!-- Status Indicator -->
         <div class="status-indicator">
           <span class="pulse-dot"></span>
-          <span id="status-text">iPad Pro 12,9" Vollbild</span>
+          <span id="status-text">iPad Pro Loop</span>
         </div>
 
         <div class="controls-group">
@@ -88,9 +88,9 @@
           </button>
 
           <!-- Fit & Zoom Modes Toggle -->
-          <button id="btn-toggle-fit" class="btn btn-secondary-pill" title="Vollbild Passform & Zoom modifizieren">
+          <button id="btn-toggle-fit" class="btn btn-secondary-pill" title="Vollbild Passform umschalten">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
-            <span id="fit-label">Cover (0% Ränder)</span>
+            <span id="fit-label">Cover</span>
           </button>
 
           <!-- Zoom Step Controls -->
@@ -98,6 +98,12 @@
             <button id="btn-zoom-out" class="btn btn-sm-icon" title="Rauszoomen">-</button>
             <span id="zoom-value">100%</span>
             <button id="btn-zoom-in" class="btn btn-sm-icon" title="Reinzoomen">+</button>
+          </div>
+
+          <!-- Vertical Position Shift Controls (Hoch / Runter schieben) -->
+          <div class="shift-controls">
+            <button id="btn-shift-up" class="btn btn-sm-pill" title="Video nach oben schieben">▲ Hoch</button>
+            <button id="btn-shift-down" class="btn btn-sm-pill" title="Video nach unten schieben">▼ Runter</button>
           </div>
 
           <div class="divider"></div>
@@ -117,7 +123,7 @@
       </div>
       
       <div class="ui-tip">
-        Tippen auf das Display blendet die Steuerung ein/aus
+        Touch-Gestik: Wischen zum Verschieben, Pinch zum Zoomen, Tippen für Menü
       </div>
     </div>
 

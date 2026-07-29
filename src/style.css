@@ -60,7 +60,7 @@ html, body {
   background-color: var(--bg-dark);
 }
 
-/* --- Video Layers (GUARANTEED ZERO BOTTOM GAP OVERBLEED) --- */
+/* --- Video Layers (100% Edge-to-Edge with Offset & Zoom Support) --- */
 
 #video-container {
   position: absolute;
@@ -82,21 +82,21 @@ html, body {
   top: 50% !important;
   left: 50% !important;
   
-  /* Overbleed width & height by 6% to eliminate any iOS bottom bar / safe-area inset gaps */
-  width: 106vw !important;
-  height: 106vh !important;
-  height: 106dvh !important;
-  min-width: 106vw !important;
-  min-height: 106dvh !important;
+  /* Overbleed width & height by 8% to eliminate any iOS safe-area / bottom bar gaps */
+  width: 108vw !important;
+  height: 108vh !important;
+  height: 108dvh !important;
+  min-width: 108vw !important;
+  min-height: 108dvh !important;
   
   object-fit: cover !important; /* 100% Fullscreen cover fill */
   object-position: center center !important;
   
-  /* Centering and applying user zoom scale */
-  transform: translate(-50%, -50%) scale(var(--video-zoom, 1.05)) !important;
+  /* Centering, applying X/Y translation offset and scale zoom */
+  transform: translate(calc(-50% + var(--video-offset-x, 0px)), calc(-50% + var(--video-offset-y, 0px))) scale(var(--video-zoom, 1.08)) !important;
   
   opacity: 0;
-  transition: opacity 0.12s ease-out, transform 0.15s ease-out;
+  transition: opacity 0.12s ease-out;
   pointer-events: none;
   background: #000000;
 }
@@ -115,7 +115,7 @@ html, body {
   object-fit: contain !important;
 }
 
-/* Fullscreen Tap Overlay to toggle UI */
+/* Fullscreen Tap & Gesture Overlay */
 #tap-overlay {
   position: absolute;
   top: 0;
@@ -124,7 +124,12 @@ html, body {
   height: 100vh;
   height: 100dvh;
   z-index: 10;
-  cursor: pointer;
+  cursor: grab;
+  touch-action: none; /* Prevent iOS default scroll during drag/pinch */
+}
+
+#tap-overlay:active {
+  cursor: grabbing;
 }
 
 /* --- Empty State Card --- */
@@ -303,7 +308,7 @@ html, body {
   transform: scale(0.94);
 }
 
-/* --- Zoom Controls --- */
+/* --- Zoom & Shift Controls --- */
 
 .zoom-controls {
   display: flex;
@@ -314,6 +319,27 @@ html, body {
   border-radius: 22px;
   padding: 2px 8px;
   height: 42px;
+}
+
+.shift-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-sm-pill {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #e2e8f0;
+  border-radius: 18px;
+  padding: 4px 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-sm-pill:active {
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .btn-sm-icon {
