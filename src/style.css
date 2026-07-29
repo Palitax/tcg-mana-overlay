@@ -16,8 +16,8 @@
   --radius-md: 14px;
   --radius-sm: 10px;
   --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --safe-area-top: env(safe-area-inset-top, 20px);
-  --safe-area-bottom: env(safe-area-inset-bottom, 20px);
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 * {
@@ -30,24 +30,31 @@
 }
 
 html, body {
-  width: 100%;
-  height: 100%;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  min-height: -webkit-fill-available;
   overflow: hidden;
   background-color: var(--bg-dark);
   color: var(--text-main);
   font-family: var(--font-sans);
   position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
 }
 
 #app {
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
   position: relative;
   overflow: hidden;
   background-color: var(--bg-dark);
 }
 
-/* --- Video Layers (Seamless Dual Engine) --- */
+/* --- Video Layers (Seamless Dual Engine Edge-to-Edge) --- */
 
 #video-container {
   position: absolute;
@@ -55,17 +62,22 @@ html, body {
   left: 0;
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
   background: #000000;
   z-index: 1;
+  overflow: hidden;
 }
 
 .video-layer {
   position: absolute;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  min-width: 100vw;
+  min-height: 100dvh;
+  object-fit: cover; /* Default: Absolute 100% full screen fill without black bars */
   opacity: 0;
   transition: opacity 0.12s ease-out;
   pointer-events: none;
@@ -76,8 +88,14 @@ html, body {
   opacity: 1;
 }
 
+/* Mode 2: Fill (Stretches video to exact screen bounds - 0% black bars, 0% crop) */
+.video-layer.fit-fill {
+  object-fit: fill !important;
+}
+
+/* Mode 3: Contain (Original aspect ratio with letterbox) */
 .video-layer.fit-contain {
-  object-fit: contain;
+  object-fit: contain !important;
 }
 
 /* Fullscreen Tap Overlay to toggle UI */
@@ -87,6 +105,7 @@ html, body {
   left: 0;
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
   z-index: 10;
   cursor: pointer;
 }

@@ -346,17 +346,27 @@ class VideoLooperApp {
 
   toggleFitMode() {
     if (this.fitMode === 'cover') {
+      this.fitMode = 'fill';
+      this.videoA.classList.remove('fit-contain');
+      this.videoB.classList.remove('fit-contain');
+      this.videoA.classList.add('fit-fill');
+      this.videoB.classList.add('fit-fill');
+      this.fitLabel.textContent = 'Strecken (100%)';
+      this.showToast('Modus: Vollbild Strecken (0% Schwarze Balken)');
+    } else if (this.fitMode === 'fill') {
       this.fitMode = 'contain';
+      this.videoA.classList.remove('fit-fill');
+      this.videoB.classList.remove('fit-fill');
       this.videoA.classList.add('fit-contain');
       this.videoB.classList.add('fit-contain');
       this.fitLabel.textContent = 'Contain';
-      this.showToast('Modus: Einpassen (Contain)');
+      this.showToast('Modus: Original mit Rändern (Contain)');
     } else {
       this.fitMode = 'cover';
-      this.videoA.classList.remove('fit-contain');
-      this.videoB.classList.remove('fit-contain');
-      this.fitLabel.textContent = 'Cover';
-      this.showToast('Modus: Vollbild (Cover)');
+      this.videoA.classList.remove('fit-fill', 'fit-contain');
+      this.videoB.classList.remove('fit-fill', 'fit-contain');
+      this.fitLabel.textContent = 'Cover (Zuschneiden)';
+      this.showToast('Modus: Vollbild Zuschneiden (0% Schwarze Balken)');
     }
   }
 
