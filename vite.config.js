@@ -6,9 +6,7 @@ export default defineConfig({
     port: 3000
   },
   build: {
-    target: 'es2022',
     outDir: 'dist',
-    sourcemap: false,
-    minify: 'esbuild'
+    sourcemap: false
   }
 });

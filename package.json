@@ -1,5 +1,5 @@
 {
-  "name": "tcg-mana-overlay",
+  "name": "ipad-seamless-video-looper",
   "private": true,
   "version": "1.0.0",
   "type": "module",
@@ -7,9 +7,6 @@
     "dev": "vite --host",
     "build": "vite build",
     "preview": "vite preview"
-  },
-  "dependencies": {
-    "pixi.js": "^8.2.0"
   },
   "devDependencies": {
     "vite": "^5.3.0"

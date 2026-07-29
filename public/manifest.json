@@ -1,16 +1,16 @@
 {
-  "name": "TCG Card Mana Overlay",
-  "short_name": "Mana Overlay",
-  "description": "High-End Glowing Mana Aura Overlay for Physical TCG Cards on iPad",
+  "name": "iPad Video Looper",
+  "short_name": "Video Looper",
+  "description": "Nahtlose Vollbild Video-Schleife für iPad",
   "start_url": "/",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#030305",
-  "theme_color": "#00e5ff",
+  "background_color": "#09090b",
+  "theme_color": "#09090b",
   "icons": [
     {
       "src": "/icon.svg",
-      "sizes": "512x512",
+      "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
     }
