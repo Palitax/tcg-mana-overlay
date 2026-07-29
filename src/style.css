@@ -1,4 +1,4 @@
-/* --- Clean iPad Pro 12.9" Video Looper CSS --- */
+/* --- Clean iPad Pro 12.9" Edge-to-Edge Video Looper CSS --- */
 
 :root {
   --bg-dark: #000000;
@@ -43,23 +43,31 @@ html, body {
   left: 0;
   right: 0;
   bottom: 0;
+  margin: 0;
+  padding: 0;
 }
 
 #app {
   width: 100vw;
   height: 100vh;
   height: 100dvh;
-  position: relative;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   overflow: hidden;
   background-color: var(--bg-dark);
 }
 
-/* --- Video Layers (100% Borderless iPad Pro Edge-to-Edge) --- */
+/* --- Video Layers (GUARANTEED ZERO BOTTOM GAP OVERBLEED) --- */
 
 #video-container {
   position: absolute;
   top: 0;
   left: 0;
+  right: 0;
+  bottom: 0;
   width: 100vw;
   height: 100vh;
   height: 100dvh;
@@ -69,17 +77,24 @@ html, body {
 }
 
 .video-layer {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 100vw;
-  height: 100vh;
-  height: 100dvh;
-  min-width: 100vw;
-  min-height: 100dvh;
-  object-fit: cover; /* Default: 100% Fullscreen cover fill without black bars */
-  object-position: center center;
-  transform: translate(-50%, -50%) scale(var(--video-zoom, 1.01)); /* subpixel edge anti-alias scale */
+  display: block !important; /* Fix inline descender gap */
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  
+  /* Overbleed width & height by 6% to eliminate any iOS bottom bar / safe-area inset gaps */
+  width: 106vw !important;
+  height: 106vh !important;
+  height: 106dvh !important;
+  min-width: 106vw !important;
+  min-height: 106dvh !important;
+  
+  object-fit: cover !important; /* 100% Fullscreen cover fill */
+  object-position: center center !important;
+  
+  /* Centering and applying user zoom scale */
+  transform: translate(-50%, -50%) scale(var(--video-zoom, 1.05)) !important;
+  
   opacity: 0;
   transition: opacity 0.12s ease-out, transform 0.15s ease-out;
   pointer-events: none;
@@ -90,7 +105,7 @@ html, body {
   opacity: 1;
 }
 
-/* Mode 2: Fill (Stretches video to exact iPad Pro 2732x2048 bounds) */
+/* Mode 2: Fill (Stretches video to exact iPad Pro bounds) */
 .video-layer.fit-fill {
   object-fit: fill !important;
 }
