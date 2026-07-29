@@ -1,4 +1,4 @@
-/* --- iPad Seamless Video Looper Core Engine --- */
+/* --- iPad Pro 12.9" Seamless Video Looper Core Engine --- */
 
 const DB_NAME = 'iPadVideoLooperDB';
 const DB_STORE = 'videos';
@@ -21,9 +21,11 @@ class VideoLooperApp {
     this.btnTogglePlay = document.getElementById('btn-toggle-play');
     this.btnToggleAudio = document.getElementById('btn-toggle-audio');
     this.btnToggleFit = document.getElementById('btn-toggle-fit');
+    this.btnZoomIn = document.getElementById('btn-zoom-in');
+    this.btnZoomOut = document.getElementById('btn-zoom-out');
     this.btnClearVideo = document.getElementById('btn-clear-video');
-    this.btnFullscreen = document.getElementById('btn-fullscreen');
     this.fitLabel = document.getElementById('fit-label');
+    this.zoomValue = document.getElementById('zoom-value');
 
     // Audio icons
     this.iconAudioOn = document.getElementById('icon-audio-on');
@@ -37,7 +39,8 @@ class VideoLooperApp {
     this.objectUrl = null;
     this.isPlaying = false;
     this.isMuted = true;
-    this.fitMode = 'cover'; // 'cover' or 'contain'
+    this.fitMode = 'cover'; // 'cover', 'fill', 'contain'
+    this.zoomScale = 1.01; // Default subpixel scale for edge-to-edge full screen
     this.isSwapping = false;
     this.rafId = null;
     this.autoHideTimer = null;
@@ -88,14 +91,19 @@ class VideoLooperApp {
       this.toggleFitMode();
     });
 
+    this.btnZoomIn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.adjustZoom(0.05);
+    });
+
+    this.btnZoomOut.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.adjustZoom(-0.05);
+    });
+
     this.btnClearVideo.addEventListener('click', (e) => {
       e.stopPropagation();
       this.clearSavedVideo();
-    });
-
-    this.btnFullscreen.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.toggleFullscreen();
     });
 
     // Auto-hide UI reset on interaction
@@ -161,7 +169,7 @@ class VideoLooperApp {
       console.warn('Could not clear IndexedDB video:', err);
     }
 
-    this.stopEngine();
+    this.pauseEngine();
     if (this.objectUrl) {
       URL.revokeObjectURL(this.objectUrl);
       this.objectUrl = null;
@@ -195,7 +203,6 @@ class VideoLooperApp {
 
     this.objectUrl = URL.createObjectURL(blob);
 
-    // Assign blob to both dual video elements
     this.videoA.src = this.objectUrl;
     this.videoB.src = this.objectUrl;
 
@@ -209,6 +216,8 @@ class VideoLooperApp {
     this.videoA.classList.add('active');
     this.videoB.classList.remove('active');
 
+    this.applyZoom();
+
     this.emptyState.classList.add('hidden');
     this.uiControls.classList.remove('hidden');
 
@@ -221,7 +230,7 @@ class VideoLooperApp {
     this.scheduleAutoHide();
   }
 
-  /* --- Dual-Video Ping-Pong Looper Algorithm --- */
+  /* --- Dual-Video Ping-Pong Looper Engine --- */
   playEngine() {
     this.isPlaying = true;
     const activeVideo = this.videos[this.activeIndex];
@@ -268,7 +277,6 @@ class VideoLooperApp {
         const currentTime = active.currentTime;
         const remaining = duration - currentTime;
 
-        // Lead time before trigger: 0.15s for seamless transition without stutter
         const leadTime = Math.min(0.18, duration * 0.1);
 
         if (remaining <= leadTime && !this.isSwapping) {
@@ -299,11 +307,9 @@ class VideoLooperApp {
 
     if (playPromise !== undefined) {
       playPromise.then(() => {
-        // Smoothly crossfade opacity and swap active class
         next.classList.add('active');
         active.classList.remove('active');
 
-        // Short timeout before pausing old video so transition frame completes seamlessly
         setTimeout(() => {
           active.pause();
           active.currentTime = 0;
@@ -325,7 +331,64 @@ class VideoLooperApp {
     }
   }
 
-  /* --- Audio & Display Controls --- */
+  /* --- Zoom & Aspect Ratio Scaling Controls --- */
+  adjustZoom(delta) {
+    this.zoomScale = Math.max(0.8, Math.min(2.5, Math.round((this.zoomScale + delta) * 100) / 100));
+    this.applyZoom();
+    this.showToast(`Zoom: ${Math.round(this.zoomScale * 100)}%`);
+  }
+
+  applyZoom() {
+    this.zoomValue.textContent = `${Math.round(this.zoomScale * 100)}%`;
+    this.videoA.style.setProperty('--video-zoom', this.zoomScale);
+    this.videoB.style.setProperty('--video-zoom', this.zoomScale);
+  }
+
+  toggleFitMode() {
+    if (this.fitMode === 'cover') {
+      // Step 2: 133% iPad Pro 12.9" 4:3 Aspect Boost (Ideal for 16:9 videos on 4:3 screens)
+      this.fitMode = 'ipad129';
+      this.zoomScale = 1.33;
+      this.applyZoom();
+      this.videoA.classList.remove('fit-fill', 'fit-contain');
+      this.videoB.classList.remove('fit-fill', 'fit-contain');
+      this.fitLabel.textContent = 'iPad Pro (133%)';
+      this.showToast('Modus: iPad Pro 12,9" (133% Zoom - 0% Ränder)');
+    } else if (this.fitMode === 'ipad129') {
+      // Step 3: Stretch Fill (Forces 100% height & width matching iPad display)
+      this.fitMode = 'fill';
+      this.zoomScale = 1.0;
+      this.applyZoom();
+      this.videoA.classList.remove('fit-contain');
+      this.videoB.classList.remove('fit-contain');
+      this.videoA.classList.add('fit-fill');
+      this.videoB.classList.add('fit-fill');
+      this.fitLabel.textContent = 'Strecken (Fill)';
+      this.showToast('Modus: Strecken auf 100% Display');
+    } else if (this.fitMode === 'fill') {
+      // Step 4: Contain (Letterbox original)
+      this.fitMode = 'contain';
+      this.zoomScale = 1.0;
+      this.applyZoom();
+      this.videoA.classList.remove('fit-fill');
+      this.videoB.classList.remove('fit-fill');
+      this.videoA.classList.add('fit-contain');
+      this.videoB.classList.add('fit-contain');
+      this.fitLabel.textContent = 'Contain';
+      this.showToast('Modus: Original mit Rändern (Contain)');
+    } else {
+      // Step 1: Default Cover Fill (0% Ränder)
+      this.fitMode = 'cover';
+      this.zoomScale = 1.01;
+      this.applyZoom();
+      this.videoA.classList.remove('fit-fill', 'fit-contain');
+      this.videoB.classList.remove('fit-fill', 'fit-contain');
+      this.fitLabel.textContent = 'Cover (0% Ränder)';
+      this.showToast('Modus: Vollbild (0% Ränder)');
+    }
+  }
+
+  /* --- Audio Controls --- */
   toggleAudio() {
     this.isMuted = !this.isMuted;
     this.videoA.muted = this.isMuted;
@@ -341,42 +404,6 @@ class VideoLooperApp {
       this.iconAudioOn.classList.remove('hidden');
       this.btnToggleAudio.classList.remove('btn-muted');
       this.showToast('Audio aktiviert');
-    }
-  }
-
-  toggleFitMode() {
-    if (this.fitMode === 'cover') {
-      this.fitMode = 'fill';
-      this.videoA.classList.remove('fit-contain');
-      this.videoB.classList.remove('fit-contain');
-      this.videoA.classList.add('fit-fill');
-      this.videoB.classList.add('fit-fill');
-      this.fitLabel.textContent = 'Strecken (100%)';
-      this.showToast('Modus: Vollbild Strecken (0% Schwarze Balken)');
-    } else if (this.fitMode === 'fill') {
-      this.fitMode = 'contain';
-      this.videoA.classList.remove('fit-fill');
-      this.videoB.classList.remove('fit-fill');
-      this.videoA.classList.add('fit-contain');
-      this.videoB.classList.add('fit-contain');
-      this.fitLabel.textContent = 'Contain';
-      this.showToast('Modus: Original mit Rändern (Contain)');
-    } else {
-      this.fitMode = 'cover';
-      this.videoA.classList.remove('fit-fill', 'fit-contain');
-      this.videoB.classList.remove('fit-fill', 'fit-contain');
-      this.fitLabel.textContent = 'Cover (Zuschneiden)';
-      this.showToast('Modus: Vollbild Zuschneiden (0% Schwarze Balken)');
-    }
-  }
-
-  toggleFullscreen() {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().catch(err => {
-        this.showToast('Vollbild auf diesem Gerät nicht unterstützt');
-      });
-    } else {
-      document.exitFullscreen();
     }
   }
 
@@ -408,7 +435,7 @@ class VideoLooperApp {
     if (isPlaying) {
       this.iconPlay.classList.add('hidden');
       this.iconPause.classList.remove('hidden');
-      this.statusText.textContent = 'Nahtloses Ping-Pong Looping';
+      this.statusText.textContent = 'iPad Pro 12,9" Loop';
     } else {
       this.iconPlay.classList.remove('hidden');
       this.iconPause.classList.add('hidden');

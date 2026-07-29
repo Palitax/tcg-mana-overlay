@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>iPad Seamless Video Looper</title>
+  <title>iPad Pro 12.9" Seamless Video Looper</title>
   
   <!-- iOS PWA Meta Tags -->
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -43,7 +43,7 @@
       </div>
 
       <h1>Nahtloser Video Looper</h1>
-      <p class="subtitle">Speziell optimiert für iPad & iOS. Völlig unterbrechungsfreier Loop ohne Ruckler oder Schwarzbild.</p>
+      <p class="subtitle">Speziell optimiert für iPad Pro 12,9" (4:3 Vollbild). 100% randlos ohne schwarze Balken.</p>
 
       <label for="video-file-input" class="btn btn-primary btn-large glow-button">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -61,7 +61,7 @@
           <line x1="12" x2="12" y1="16" y2="12"/>
           <line x1="12" x2="12.01" y1="8" y2="8"/>
         </svg>
-        <span>Tipp für iPad: Auf <strong>Teilen</strong> tippen → <strong>"Zum Home-Bildschirm"</strong> für echtes 100% Vollbild ohne Safari-Leisten.</span>
+        <span>Tipp für iPad: Auf <strong>Teilen</strong> tippen → <strong>"Zum Home-Bildschirm"</strong> für 100% randloses Vollbild.</span>
       </div>
     </div>
 
@@ -71,7 +71,7 @@
         <!-- Status Indicator -->
         <div class="status-indicator">
           <span class="pulse-dot"></span>
-          <span id="status-text">Nahtloses Ping-Pong Looping</span>
+          <span id="status-text">iPad Pro 12,9" Vollbild</span>
         </div>
 
         <div class="controls-group">
@@ -87,11 +87,18 @@
             <svg id="icon-audio-on" class="icon hidden" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
           </button>
 
-          <!-- Fit Mode Toggle (Cover vs Contain) -->
-          <button id="btn-toggle-fit" class="btn btn-icon" title="Passform: Vollbild (Cover) vs Einpassen (Contain)">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
-            <span id="fit-label">Cover</span>
+          <!-- Fit & Zoom Modes Toggle -->
+          <button id="btn-toggle-fit" class="btn btn-secondary-pill" title="Vollbild Passform & Zoom modifizieren">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+            <span id="fit-label">Cover (0% Ränder)</span>
           </button>
+
+          <!-- Zoom Step Controls -->
+          <div class="zoom-controls">
+            <button id="btn-zoom-out" class="btn btn-sm-icon" title="Rauszoomen">-</button>
+            <span id="zoom-value">100%</span>
+            <button id="btn-zoom-in" class="btn btn-sm-icon" title="Reinzoomen">+</button>
+          </div>
 
           <div class="divider"></div>
 
@@ -105,11 +112,6 @@
           <!-- Clear Video -->
           <button id="btn-clear-video" class="btn btn-danger-icon" title="Video entfernen">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-          </button>
-
-          <!-- Fullscreen API Button -->
-          <button id="btn-fullscreen" class="btn btn-icon" title="Vollbild umschalten">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
           </button>
         </div>
       </div>
